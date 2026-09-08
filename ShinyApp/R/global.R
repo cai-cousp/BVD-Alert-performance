@@ -541,12 +541,17 @@ notification_map_lookup_table <- notification_map_lookup(notification_map_data)
 notification_map_available <- inherits(notification_map_data, "sf") &&
   nrow(notification_map_data) > 0L
 
-# --- Load province boundaries and label points -------------------------------
+# --- Load province boundaries, labels, and DRC national outline -------------
+affected_provinces_list <- sort(setdiff(
+  unique(trends_smooth_adeq$Province),
+  c("Ensemble", "Ensemble de la zone affectée")
+))
+
 province_map_data <- if (file.exists(file.path(bundled_data_dir, "province_map_data.rds"))) {
   readRDS(file.path(bundled_data_dir, "province_map_data.rds"))
 } else {
   tryCatch({
-    load_province_boundaries(maps_base_dir)
+    load_province_boundaries(maps_base_dir, provinces = affected_provinces_list)
   }, error = function(e) {
     warning(
       "Province boundaries could not be loaded: ",
@@ -566,6 +571,21 @@ province_label_data <- if (file.exists(file.path(bundled_data_dir, "province_lab
     lng = numeric(),
     lat = numeric()
   )
+}
+
+drc_boundary_data <- if (file.exists(file.path(bundled_data_dir, "drc_boundary_data.rds"))) {
+  readRDS(file.path(bundled_data_dir, "drc_boundary_data.rds"))
+} else {
+  tryCatch({
+    load_drc_boundary(maps_base_dir)
+  }, error = function(e) {
+    warning(
+      "DRC national boundary could not be loaded: ",
+      conditionMessage(e),
+      call. = FALSE
+    )
+    NULL
+  })
 }
 
 # --- Helper: extract intermediate parameter tables ---------------------------

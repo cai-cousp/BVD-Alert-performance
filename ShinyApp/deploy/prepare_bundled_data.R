@@ -106,76 +106,119 @@ message("Preparing lightweight map layers...")
 
 source(file.path(app_dir, "R", "map_data_helpers.R"))
 
-# Check for precomputed notification performance map data in latest_dir
-map_data_file <- sort(list.files(latest_dir, pattern = "^03b_alert_notification_performance_map_data.*[.]rds$", full.names = TRUE), decreasing = TRUE)
+# Source health zones and provinces from ZSandDPSshapefiles
+zone_shp <- file.path(
+  maps_base_dir,
+  "ZSandDPSshapefiles",
+  "osm_rdc_sante_zones_211212",
+  "OSM_RDC_sante_zones_211212.shp"
+)
+prov_shp <- file.path(
+  maps_base_dir,
+  "ZSandDPSshapefiles",
+  "osm_rdc_sante_provinces_211212",
+  "OSM_RDC_sante_provinces_211212.shp"
+)
 
-if (length(map_data_file) > 0L) {
-  raw_map <- readRDS(map_data_file[[1L]])
-  
-  # Ensure geom column is set properly
-  geom_col <- attr(raw_map, "sf_column")
-  if (is.null(geom_col) || !geom_col %in% names(raw_map)) {
-    if ("geom" %in% names(raw_map)) {
-      sf::st_geometry(raw_map) <- "geom"
-    } else if ("geometry" %in% names(raw_map)) {
-      sf::st_geometry(raw_map) <- "geometry"
-    }
-  }
+# Extract affected provinces dynamically from trend data
+affected_provs_trends <- setdiff(unique(trend_data$Province), c("Ensemble", "Ensemble de la zone affectée"))
+norm_affected <- tolower(gsub("[- ]", "", affected_provs_trends))
+message("Affected provinces detected in trends: ", paste(affected_provs_trends, collapse = ", "))
 
-  # Filter to affected provinces: Ituri, Nord-Kivu, Sud-Kivu
-  prov_keep <- c("ituri", "nord-kivu", "sud-kivu")
-  map_subset <- raw_map[tolower(as.character(raw_map$province)) %in% prov_keep, ]
-  
-  # Attach hover indicators and metrics
+# 1. Health zones layer
+if (file.exists(zone_shp) && file.exists(prov_shp)) {
+  zs_raw <- sf::read_sf(zone_shp, quiet = TRUE)
+  dps_raw <- sf::read_sf(prov_shp, quiet = TRUE)
+
+  if (is.na(sf::st_crs(zs_raw))) sf::st_crs(zs_raw) <- 4326
+  if (is.na(sf::st_crs(dps_raw))) sf::st_crs(dps_raw) <- 4326
+
+  # National boundary outline of the complete DRC (dissolved all provinces)
+  drc_geom <- sf::st_union(dps_raw)
+  drc_sf <- sf::st_sf(country = "RDC", geometry = drc_geom) |>
+    sf::st_transform(3379) |>
+    sf::st_simplify(preserveTopology = TRUE, dTolerance = 1000) |>
+    sf::st_transform(4326) |>
+    sf::st_make_valid()
+
+  saveRDS(drc_sf, file.path(data_dest, "drc_boundary_data.rds"), compress = "xz")
+  message("  -> drc_boundary_data.rds (", round(file.size(file.path(data_dest, "drc_boundary_data.rds")) / 1024, 1), " KB)")
+
+  # Spatially attribute province name to health zones
+  dps_clean <- dps_raw |> dplyr::select(province = "name")
+  zs_pts <- suppressWarnings(sf::st_point_on_surface(zs_raw))
+  joined_pts <- suppressWarnings(sf::st_join(zs_pts, dps_clean, join = sf::st_intersects))
+
+  zs_raw$province <- as.character(joined_pts$province)
+  zs_raw$zonesante <- as.character(zs_raw$name)
+
+  # Filter to health zones and provinces of the affected areas
+  zs_sub <- zs_raw[tolower(gsub("[- ]", "", zs_raw$province)) %in% norm_affected, ]
+  prov_sub <- dps_clean[tolower(gsub("[- ]", "", dps_clean$province)) %in% norm_affected, ]
+
+  # Join metrics and adequacy by normalized name (handles hyphen/space differences like Boma-Mangbetu)
   recent_metrics <- summarise_recent_notification_metrics(trend_data)
-  map_subset <- map_subset |>
-    dplyr::select(-dplyr::any_of(c(
-      "total_alerts", "case_adequacy_recent", "death_adequacy_recent",
-      "mean_aai_recent", "n_recent_windows"
-    ))) |>
-    dplyr::left_join(recent_metrics, by = "zone_sante_notification")
-
-  if (!"adequacy_category_recomputed" %in% names(map_subset)) {
-    if ("adequacy_category" %in% names(map_subset)) {
-      map_subset$adequacy_category_recomputed <- map_subset$adequacy_category
-    }
+  recent_adeq_data <- if (exists("recent_adequacy") && is.data.frame(recent_adequacy) && nrow(recent_adequacy) > 0L) {
+    recent_adequacy
+  } else if (file.exists(file.path(data_dest, "02_recent_adequacy.xlsx"))) {
+    readxl::read_excel(file.path(data_dest, "02_recent_adequacy.xlsx"))
+  } else {
+    tibble::tibble()
   }
 
-  # Simplify in projected CRS EPSG:3379 for fast rendering
-  map_simplified <- sf::st_transform(map_subset, 3379) |>
+  zs_sub$norm_name <- tolower(gsub("[- ]", "", zs_sub$name))
+  recent_metrics$norm_name <- tolower(gsub("[- ]", "", recent_metrics$zone_sante_notification))
+
+  if (nrow(recent_adeq_data) > 0L && "zone_sante_notification" %in% names(recent_adeq_data)) {
+    recent_adeq_data$norm_name <- tolower(gsub("[- ]", "", recent_adeq_data$zone_sante_notification))
+    zs_joined <- zs_sub |>
+      dplyr::left_join(
+        recent_adeq_data |> dplyr::select("norm_name", "zone_sante_notification", "adequacy_category", "mean_aai"),
+        by = "norm_name"
+      ) |>
+      dplyr::left_join(recent_metrics |> dplyr::select(-dplyr::any_of("zone_sante_notification")), by = "norm_name") |>
+      dplyr::mutate(
+        adequacy_category_recomputed = .data$adequacy_category,
+        mean_aai_recent = dplyr::coalesce(.data$mean_aai_recent, .data$mean_aai),
+        province_notification = .data$province
+      ) |>
+      dplyr::select(-"norm_name")
+  } else {
+    zs_joined <- zs_sub |>
+      dplyr::left_join(recent_metrics, by = "norm_name") |>
+      dplyr::mutate(
+        province_notification = .data$province,
+        adequacy_category_recomputed = NA_character_
+      ) |>
+      dplyr::select(-"norm_name")
+  }
+
+  # Simplify health zone geometries in projected CRS EPSG:3379 for fast rendering
+  map_simplified <- sf::st_transform(zs_joined, 3379) |>
     sf::st_simplify(preserveTopology = TRUE, dTolerance = 500) |>
     sf::st_transform(4326) |>
     sf::st_make_valid()
 
-  if (!"map_id" %in% names(map_simplified)) {
-    map_simplified$map_id <- sprintf("notification_hz_%04d", seq_len(nrow(map_simplified)))
-  }
+  map_simplified$map_id <- sprintf("notification_hz_%04d", seq_len(nrow(map_simplified)))
 
   saveRDS(map_simplified, file.path(data_dest, "notification_map_data.rds"), compress = "xz")
-  message("  -> notification_map_data.rds (", round(file.size(file.path(data_dest, "notification_map_data.rds")) / 1024, 1), " KB)")
+  message("  -> notification_map_data.rds (", round(file.size(file.path(data_dest, "notification_map_data.rds")) / 1024, 1), " KB, ", nrow(map_simplified), " zones, ", sum(!is.na(map_simplified$zone_sante_notification)), " affected)")
+
+  # 2. Province boundary outlines and label centroids
+  prov_simplified <- sf::st_transform(prov_sub, 3379) |>
+    sf::st_simplify(preserveTopology = TRUE, dTolerance = 500) |>
+    sf::st_transform(4326) |>
+    sf::st_make_valid() |>
+    dplyr::mutate(province_name = stringr::str_to_title(as.character(.data$province)))
+
+  saveRDS(prov_simplified, file.path(data_dest, "province_map_data.rds"), compress = "xz")
+  message("  -> province_map_data.rds (", round(file.size(file.path(data_dest, "province_map_data.rds")) / 1024, 1), " KB, ", nrow(prov_simplified), " provinces)")
+
+  prov_labels <- create_province_label_points(prov_simplified)
+  saveRDS(prov_labels, file.path(data_dest, "province_label_data.rds"), compress = "xz")
+  message("  -> province_label_data.rds (", round(file.size(file.path(data_dest, "province_label_data.rds")) / 1024, 1), " KB)")
 } else {
-  message("  Notice: No 03b map data file found. Generating from geography helper if available.")
-}
-
-# Province boundary outlines
-if (dir.exists(maps_base_dir)) {
-  prov_sf <- tryCatch(
-    load_province_boundaries(maps_base_dir),
-    error = function(e) NULL
-  )
-  if (!is.null(prov_sf) && inherits(prov_sf, "sf") && nrow(prov_sf) > 0L) {
-    # Keep only the 3 affected provinces
-    prov_keep_names <- c("Ituri", "Nord-Kivu", "Sud-Kivu")
-    prov_sub <- prov_sf[tolower(as.character(prov_sf$province_name)) %in% tolower(prov_keep_names), ]
-    if (nrow(prov_sub) == 0L) prov_sub <- prov_sf
-    
-    saveRDS(prov_sub, file.path(data_dest, "province_map_data.rds"), compress = "xz")
-    message("  -> province_map_data.rds (", round(file.size(file.path(data_dest, "province_map_data.rds")) / 1024, 1), " KB)")
-
-    prov_labels <- create_province_label_points(prov_sub)
-    saveRDS(prov_labels, file.path(data_dest, "province_label_data.rds"), compress = "xz")
-    message("  -> province_label_data.rds (", round(file.size(file.path(data_dest, "province_label_data.rds")) / 1024, 1), " KB)")
-  }
+  warning("ZSandDPSshapefiles directory not found. Skipping map bundling.")
 }
 
 # --- Write manifest metadata --------------------------------------------------

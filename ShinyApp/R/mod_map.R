@@ -34,7 +34,8 @@ notification_map_server <- function(
   map_data,
   selected_hz,
   province_data = NULL,
-  province_labels = NULL
+  province_labels = NULL,
+  drc_boundary = NULL
 ) {
   moduleServer(id, function(input, output, session) {
     valid_map_data <- if (inherits(map_data, "sf") && nrow(map_data) > 0L) {
@@ -46,6 +47,17 @@ notification_map_server <- function(
 
     active_data <- if (!is.null(valid_map_data)) {
       valid_map_data
+    } else {
+      NULL
+    }
+
+    # Resolve DRC national boundary: passed data > global env > NULL
+    resolved_drc <- if (!is.null(drc_boundary) && inherits(drc_boundary, "sf") && nrow(drc_boundary) > 0L) {
+      drc_boundary
+    } else if (exists("drc_boundary_data", envir = .GlobalEnv) &&
+               inherits(get("drc_boundary_data", envir = .GlobalEnv), "sf") &&
+               nrow(get("drc_boundary_data", envir = .GlobalEnv)) > 0L) {
+      get("drc_boundary_data", envir = .GlobalEnv)
     } else {
       NULL
     }
@@ -113,8 +125,23 @@ notification_map_server <- function(
         addTiles(
           urlTemplate = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
           options = tileOptions(opacity = 0.45)
-        ) |>
-        # Health zone polygons (thin crisp white borders)
+        )
+
+      # Overlay full DRC national boundary so the whole country outline is visible
+      if (!is.null(resolved_drc) && inherits(resolved_drc, "sf") && nrow(resolved_drc) > 0L) {
+        map <- map |>
+          addPolylines(
+            data = resolved_drc,
+            group = "Frontière nationale",
+            color = "#212529",
+            weight = 2.5,
+            opacity = 0.9,
+            options = pathOptions(interactive = FALSE, pointerEvents = "none")
+          )
+      }
+
+      # Health zone polygons (thin crisp white borders)
+      map <- map |>
         addPolygons(
           data = active_data,
           group = "Zones de santé",
@@ -184,9 +211,21 @@ notification_map_server <- function(
           )
       }
 
+      overlay_groups <- c("Zones de santé", "Limites des provinces", "Noms des provinces")
+      if (!is.null(resolved_drc) && inherits(resolved_drc, "sf") && nrow(resolved_drc) > 0L) {
+        overlay_groups <- c(overlay_groups, "Frontière nationale")
+      }
+
+      # Frame the whole DRC country boundary so the whole country is visible
+      bb_target <- if (!is.null(resolved_drc) && inherits(resolved_drc, "sf") && nrow(resolved_drc) > 0L) {
+        sf::st_bbox(resolved_drc)
+      } else {
+        sf::st_bbox(active_data)
+      }
+
       map |>
         addLayersControl(
-          overlayGroups = c("Zones de santé", "Limites des provinces", "Noms des provinces"),
+          overlayGroups = overlay_groups,
           options = layersControlOptions(collapsed = TRUE)
         ) |>
         addLegend(
@@ -197,10 +236,10 @@ notification_map_server <- function(
           title = "Catégorie d'adéquation"
         ) |>
         fitBounds(
-          lng1 = as.numeric(sf::st_bbox(active_data)[["xmin"]]),
-          lat1 = as.numeric(sf::st_bbox(active_data)[["ymin"]]),
-          lng2 = as.numeric(sf::st_bbox(active_data)[["xmax"]]),
-          lat2 = as.numeric(sf::st_bbox(active_data)[["ymax"]])
+          lng1 = as.numeric(bb_target[["xmin"]]),
+          lat1 = as.numeric(bb_target[["ymin"]]),
+          lng2 = as.numeric(bb_target[["xmax"]]),
+          lat2 = as.numeric(bb_target[["ymax"]])
         )
     })
 

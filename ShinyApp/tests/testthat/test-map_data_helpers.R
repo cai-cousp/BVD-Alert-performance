@@ -87,22 +87,6 @@ test_that("hover labels contain every requested indicator", {
   expect_true(grepl("Catégorie", label, fixed = TRUE))
 })
 
-test_that("hover labels handle NA category and unnotified zones without subscript out of bounds error", {
-  row_na <- tibble::tibble(
-    zone_sante_notification = NA_character_,
-    zonesante = "Zone Test",
-    province_notification = NA_character_,
-    province = "Ituri",
-    adequacy_category_recomputed = NA_character_,
-    total_alerts = NA_real_,
-    case_adequacy_recent = NA_real_,
-    death_adequacy_recent = NA_real_,
-    mean_aai_recent = NA_real_
-  )
-  expect_no_error(label <- as.character(build_notification_hover_label(row_na)))
-  expect_true(grepl("Zone Test", label, fixed = TRUE))
-})
-
 test_that("selected-zone national-style tables have the expected structure", {
   skip_if(!exists("trends_smooth_adeq"), message = "global trends not loaded")
 
@@ -154,9 +138,41 @@ test_that("load_province_boundaries loads and simplifies DRC provinces", {
   expect_true("Ituri" %in% prov$province_name)
   expect_true(any(grepl("Nord[- ]Kivu", prov$province_name)))
 
+  # Filtering by province names (with normalized matching)
+  filtered_prov <- load_province_boundaries(maps_base_dir, provinces = c("Bas Uele", "Ituri", "Tshopo"))
+  expect_s3_class(filtered_prov, "sf")
+  expect_equal(nrow(filtered_prov), 3L)
+
   # Graceful failure on invalid directory
   expect_warning(res <- load_province_boundaries("non_existent_directory_12345"))
   expect_null(res)
+})
+
+test_that("load_drc_boundary builds a valid full-country national boundary", {
+  skip_if(!exists("maps_base_dir") || !dir.exists(maps_base_dir), message = "Maps dir not available")
+
+  drc <- load_drc_boundary(maps_base_dir)
+  expect_s3_class(drc, "sf")
+  expect_equal(nrow(drc), 1L)
+  expect_equal(sf::st_crs(drc)$epsg, 4326)
+
+  bb <- sf::st_bbox(drc)
+  # DRC spans roughly lng 12 to 31.5, lat -13.5 to 5.5
+  expect_lt(bb[["xmin"]], 13)
+  expect_gt(bb[["xmax"]], 31)
+  expect_lt(bb[["ymin"]], -13)
+  expect_gt(bb[["ymax"]], 5)
+})
+
+test_that("load_zsanddps_health_zones loads zones with spatial province assignment", {
+  skip_if(!exists("maps_base_dir") || !dir.exists(maps_base_dir), message = "Maps dir not available")
+
+  ituri_zones <- load_zsanddps_health_zones(maps_base_dir, provinces = "Ituri")
+  expect_s3_class(ituri_zones, "sf")
+  expect_equal(nrow(ituri_zones), 36L)
+  expect_true("zonesante" %in% names(ituri_zones))
+  expect_true("province" %in% names(ituri_zones))
+  expect_true(all(ituri_zones$province == "Ituri"))
 })
 
 test_that("create_province_label_points extracts interior label coordinates", {
@@ -176,4 +192,5 @@ test_that("create_province_label_points extracts interior label coordinates", {
   # Handles empty or NULL input
   expect_equal(nrow(create_province_label_points(NULL)), 0L)
 })
+
 

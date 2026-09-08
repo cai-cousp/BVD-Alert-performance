@@ -34,6 +34,9 @@ test_that("bundled data directory and required files exist", {
   expect_true(file.exists(file.path(bundled_dir, "02_trends_smooth_adeq.rds")))
   expect_true(file.exists(file.path(bundled_dir, "02_recent_adequacy.xlsx")))
   expect_true(file.exists(file.path(bundled_dir, "notification_map_data.rds")))
+  expect_true(file.exists(file.path(bundled_dir, "province_map_data.rds")))
+  expect_true(file.exists(file.path(bundled_dir, "province_label_data.rds")))
+  expect_true(file.exists(file.path(bundled_dir, "drc_boundary_data.rds")))
   expect_true(file.exists(file.path(bundled_dir, "manifest.json")))
 })
 
@@ -66,20 +69,24 @@ test_that("bundled data loading initializes global state cleanly", {
   expect_true(exists("intermediate_params", envir = env))
   expect_true(exists("recent_adequacy", envir = env))
   expect_true(exists("notification_map_data", envir = env))
+  expect_true(exists("province_map_data", envir = env))
+  expect_true(exists("province_label_data", envir = env))
+  expect_true(exists("drc_boundary_data", envir = env))
 
   expect_gt(nrow(env$synthesis), 0)
   expect_gt(nrow(env$trends_smooth_adeq), 0)
   expect_true(env$notification_map_available)
 })
 
-test_that("bundled notification map data has valid geometry and required columns", {
+test_that("bundled notification map data has valid geometry, 57 affected zones, and 6 provinces", {
   skip_if(is.na(bundled_dir), message = "Bundled data directory not found")
 
   map_path <- file.path(bundled_dir, "notification_map_data.rds")
   map_data <- readRDS(map_path)
 
   expect_s3_class(map_data, "sf")
-  expect_gt(nrow(map_data), 0)
+  expect_equal(nrow(map_data), 151L)
+  expect_equal(sum(!is.na(map_data$zone_sante_notification)), 57L)
   expect_equal(sf::st_crs(map_data)$epsg, 4326)
 
   required_cols <- c(
@@ -91,6 +98,18 @@ test_that("bundled notification map data has valid geometry and required columns
     expect_true(col %in% names(map_data), info = paste("Missing column:", col))
   }
   expect_false(anyDuplicated(map_data$map_id) > 0)
+
+  # Check provinces layer
+  prov_path <- file.path(bundled_dir, "province_map_data.rds")
+  prov_data <- readRDS(prov_path)
+  expect_s3_class(prov_data, "sf")
+  expect_equal(nrow(prov_data), 6L)
+
+  # Check DRC boundary layer
+  drc_path <- file.path(bundled_dir, "drc_boundary_data.rds")
+  drc_data <- readRDS(drc_path)
+  expect_s3_class(drc_data, "sf")
+  expect_equal(nrow(drc_data), 1L)
 })
 
 test_that("Table 1 and Table 2 generation work identically with bundled data", {

@@ -510,7 +510,8 @@ trends_server <- function(id, filters = NULL) {
       map_data = notification_map_data,
       selected_hz = selected_hz_value,
       province_data = province_map_data,
-      province_labels = province_label_data
+      province_labels = province_label_data,
+      drc_boundary = drc_boundary_data
     )
 
     observeEvent(map_selection(), {

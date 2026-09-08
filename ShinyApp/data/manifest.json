@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-08 17:24:38 WAT",
+  "generated_at": "2026-09-08 22:00:44 WAT",
   "source_output_dir": "2026_09_07",
   "date_stamp": {},
   "health_zones_count": 58,
   "weeks_count": 23,
-  "total_payload_kb": 684.54,
+  "total_payload_kb": 819.92,
   "files": [
     {
       "filename": "01_intermediate_parameters.rds",
@@ -23,6 +23,10 @@
       "size_kb": 54.52
     },
     {
+      "filename": "drc_boundary_data.rds",
+      "size_kb": 29.71
+    },
+    {
       "filename": "intermediate_params.rds",
       "size_kb": 201.28
     },
@@ -32,15 +36,15 @@
     },
     {
       "filename": "notification_map_data.rds",
-      "size_kb": 111.94
+      "size_kb": 178.32
     },
     {
       "filename": "province_label_data.rds",
-      "size_kb": 0.26
+      "size_kb": 0.33
     },
     {
       "filename": "province_map_data.rds",
-      "size_kb": 18.54
+      "size_kb": 57.76
     },
     {
       "filename": "recent_adequacy.xlsx",

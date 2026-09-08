@@ -157,11 +157,14 @@ prepare_notification_map_data <- function(recent_adequacy, trends, geography) {
     sf::st_transform(4326) |>
     sf::st_make_valid()
 
-  # Keep only analysed health zones for the dashboard. The static report
-  # intentionally includes national grey context, but those additional polygons
-  # make the Leaflet payload unnecessarily large and delay the first render.
+  # Keep all health zones belonging to the affected provinces for spatial continuity
+  affected_provs_trends <- setdiff(unique(trends$Province), c("Ensemble", "Ensemble de la zone affectée"))
+  norm_affected <- tolower(gsub("[- ]", "", affected_provs_trends))
   map_data <- map_data |>
-    dplyr::filter(!is.na(.data$zone_sante_notification))
+    dplyr::filter(
+      !is.na(.data$zone_sante_notification) |
+      tolower(gsub("[- ]", "", as.character(.data$province))) %in% norm_affected
+    )
 
   attr(map_data, "notification_audit") <- joined$audit
   map_data
@@ -368,29 +371,31 @@ get_table2_selected_hz_df <- function(intermediate_params, trends_smooth_adeq, h
 #' Searches for standard administrative level 1 boundaries in the project Maps
 #' directory, standardises the province name column to `province_name`,
 #' simplifies geometries for optimal Leaflet rendering, and returns an EPSG:4326
-#' `sf` layer.
+#' `sf` layer. Prioritises the official OSM RDC santé reference in ZSandDPSshapefiles.
 #'
 #' @param maps_base_dir Path to the `Maps` folder (or parent containing shapefiles).
 #' @param dTolerance Distance tolerance in meters for polygon simplification.
 #'   Default 500m.
+#' @param provinces Optional character vector of province names to filter.
+#'   Matching is tolerant to spaces/hyphens and case.
 #'
 #' @return An `sf` object with columns `province_name` and geometry, or `NULL`
 #'   if no shapefile is found.
-load_province_boundaries <- function(maps_base_dir, dTolerance = 500) {
+load_province_boundaries <- function(maps_base_dir, dTolerance = 500, provinces = NULL) {
   if (is.null(maps_base_dir) || !dir.exists(maps_base_dir)) {
     warning("Province map directory does not exist: ", maps_base_dir)
     return(NULL)
   }
 
   candidates <- c(
-    file.path(maps_base_dir, "cod_admin_boundaries.shp", "cod_admin1.shp"),
-    file.path(maps_base_dir, "cod_admin_boundaries.geojson", "cod_admin1.geojson"),
     file.path(
       maps_base_dir,
       "ZSandDPSshapefiles",
       "osm_rdc_sante_provinces_211212",
       "OSM_RDC_sante_provinces_211212.shp"
-    )
+    ),
+    file.path(maps_base_dir, "cod_admin_boundaries.shp", "cod_admin1.shp"),
+    file.path(maps_base_dir, "cod_admin_boundaries.geojson", "cod_admin1.geojson")
   )
 
   valid_path <- candidates[file.exists(candidates)][1L]
@@ -411,7 +416,7 @@ load_province_boundaries <- function(maps_base_dir, dTolerance = 500) {
   }
 
   name_col <- intersect(
-    c("adm1_name", "province", "name", "adm1", "PROVINCE", "NAME"),
+    c("name", "adm1_name", "province", "adm1", "PROVINCE", "NAME"),
     names(prov_raw)
   )[1L]
 
@@ -425,12 +430,19 @@ load_province_boundaries <- function(maps_base_dir, dTolerance = 500) {
   prov <- prov_raw |>
     dplyr::select(province_name = dplyr::all_of(name_col), dplyr::all_of(geom_col)) |>
     dplyr::mutate(
-      province_name = gsub("(^|[ -])([a-zà-öø-ÿ])", "\\1\\U\\2", as.character(.data$province_name), perl = TRUE)
+      province_name = stringr::str_to_title(as.character(.data$province_name))
     ) |>
     sf::st_make_valid()
 
   if (is.na(sf::st_crs(prov))) {
     sf::st_crs(prov) <- 4326
+  }
+
+  # Filter to specified provinces if provided
+  if (!is.null(provinces) && length(provinces) > 0L) {
+    target_norm <- tolower(gsub("[- ]", "", as.character(provinces)))
+    prov <- prov |>
+      dplyr::filter(tolower(gsub("[- ]", "", as.character(.data$province_name))) %in% target_norm)
   }
 
   # Simplify in projected CRS (EPSG:3379 DRC planar) for snappy Leaflet performance
@@ -441,6 +453,135 @@ load_province_boundaries <- function(maps_base_dir, dTolerance = 500) {
     sf::st_make_valid()
 
   prov
+}
+
+#' Load and simplify the complete DRC national boundary
+#'
+#' Dissolves province boundaries from ZSandDPSshapefiles or loads cod_admin0,
+#' creating a single national boundary outline for Leaflet full-country framing.
+#'
+#' @param maps_base_dir Path to the `Maps` folder.
+#' @param dTolerance Simplification distance tolerance in meters (default: 1000m).
+#' @return An `sf` object representing the national boundary, or `NULL`.
+load_drc_boundary <- function(maps_base_dir, dTolerance = 1000) {
+  if (is.null(maps_base_dir) || !dir.exists(maps_base_dir)) {
+    warning("Maps directory does not exist: ", maps_base_dir)
+    return(NULL)
+  }
+
+  # First check for OSM provinces shapefile to dissolve (ensures 100% boundary coherence)
+  osm_prov_path <- file.path(
+    maps_base_dir,
+    "ZSandDPSshapefiles",
+    "osm_rdc_sante_provinces_211212",
+    "OSM_RDC_sante_provinces_211212.shp"
+  )
+
+  drc_sf <- if (file.exists(osm_prov_path)) {
+    tryCatch({
+      osm_p <- sf::read_sf(osm_prov_path, quiet = TRUE)
+      if (is.na(sf::st_crs(osm_p))) sf::st_crs(osm_p) <- 4326
+      drc_geom <- sf::st_union(osm_p)
+      sf::st_sf(country = "RDC", geometry = drc_geom)
+    }, error = function(e) NULL)
+  } else {
+    NULL
+  }
+
+  if (is.null(drc_sf)) {
+    admin0_candidates <- c(
+      file.path(maps_base_dir, "cod_admin_boundaries.shp", "cod_admin0.shp"),
+      file.path(maps_base_dir, "cod_admin_boundaries.geojson", "cod_admin0.geojson")
+    )
+    admin0_path <- admin0_candidates[file.exists(admin0_candidates)][1L]
+    if (!is.na(admin0_path)) {
+      drc_sf <- tryCatch({
+        raw0 <- sf::read_sf(admin0_path, quiet = TRUE)
+        if (is.na(sf::st_crs(raw0))) sf::st_crs(raw0) <- 4326
+        sf::st_sf(country = "RDC", geometry = sf::st_geometry(raw0))
+      }, error = function(e) NULL)
+    }
+  }
+
+  if (is.null(drc_sf)) {
+    warning("Could not build DRC national boundary from: ", maps_base_dir)
+    return(NULL)
+  }
+
+  drc_sf |>
+    sf::st_transform(3379) |>
+    sf::st_simplify(preserveTopology = TRUE, dTolerance = dTolerance) |>
+    sf::st_transform(4326) |>
+    sf::st_make_valid()
+}
+
+#' Load and spatially attribute health zones from ZSandDPSshapefiles
+#'
+#' Reads the official OSM health zone shapefile, spatio-joins each zone to its
+#' province from OSM provinces, and optionally filters to a set of provinces.
+#'
+#' @param maps_base_dir Path to the `Maps` folder.
+#' @param provinces Optional character vector of province names to keep.
+#' @param dTolerance Simplification distance tolerance in meters (default: 500m).
+#' @return An `sf` object with columns `zonesante`, `province`, and geometry.
+load_zsanddps_health_zones <- function(maps_base_dir, provinces = NULL, dTolerance = 500) {
+  if (is.null(maps_base_dir) || !dir.exists(maps_base_dir)) {
+    warning("Maps directory does not exist: ", maps_base_dir)
+    return(NULL)
+  }
+
+  zone_shp <- file.path(
+    maps_base_dir,
+    "ZSandDPSshapefiles",
+    "osm_rdc_sante_zones_211212",
+    "OSM_RDC_sante_zones_211212.shp"
+  )
+  prov_shp <- file.path(
+    maps_base_dir,
+    "ZSandDPSshapefiles",
+    "osm_rdc_sante_provinces_211212",
+    "OSM_RDC_sante_provinces_211212.shp"
+  )
+
+  if (!file.exists(zone_shp) || !file.exists(prov_shp)) {
+    warning("ZSandDPSshapefiles not found in: ", maps_base_dir)
+    return(NULL)
+  }
+
+  zs <- tryCatch(sf::read_sf(zone_shp, quiet = TRUE), error = function(e) NULL)
+  dps <- tryCatch(sf::read_sf(prov_shp, quiet = TRUE), error = function(e) NULL)
+
+  if (is.null(zs) || is.null(dps) || nrow(zs) == 0L || nrow(dps) == 0L) {
+    return(NULL)
+  }
+
+  if (is.na(sf::st_crs(zs))) sf::st_crs(zs) <- 4326
+  if (is.na(sf::st_crs(dps))) sf::st_crs(dps) <- 4326
+
+  dps_clean <- dps |>
+    dplyr::select(province = "name")
+
+  # Assign province via spatial surface-point intersection
+  zs_pts <- suppressWarnings(sf::st_point_on_surface(zs))
+  joined_pts <- suppressWarnings(sf::st_join(zs_pts, dps_clean, join = sf::st_intersects))
+
+  zs$province <- as.character(joined_pts$province)
+  zs$zonesante <- as.character(zs$name)
+
+  res <- zs |>
+    dplyr::select("zonesante", "province", dplyr::all_of(attr(zs, "sf_column") %||% "geometry"))
+
+  if (!is.null(provinces) && length(provinces) > 0L) {
+    target_norm <- tolower(gsub("[- ]", "", as.character(provinces)))
+    res <- res |>
+      dplyr::filter(tolower(gsub("[- ]", "", as.character(.data$province))) %in% target_norm)
+  }
+
+  res |>
+    sf::st_transform(3379) |>
+    sf::st_simplify(preserveTopology = TRUE, dTolerance = dTolerance) |>
+    sf::st_transform(4326) |>
+    sf::st_make_valid()
 }
 
 #' Create label centroid points for province names
@@ -474,4 +615,5 @@ create_province_label_points <- function(province_sf) {
   ) |>
     dplyr::filter(!is.na(.data$province_name), is.finite(.data$lng), is.finite(.data$lat))
 }
+
 
