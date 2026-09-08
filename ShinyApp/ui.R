@@ -28,6 +28,21 @@ ui <- tagList(
       href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     ),
     tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
+    # Plotly and DataTables dependencies for Shinylive / htmlwidgets
+    tags$script(src = "https://cdn.plot.ly/plotly-2.35.2.min.js", charset = "utf-8"),
+    tags$link(
+      rel = "stylesheet",
+      type = "text/css",
+      href = "https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css"
+    ),
+    tags$script(
+      type = "text/javascript",
+      src = "https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"
+    ),
+    tags$script(
+      type = "text/javascript",
+      src = "https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"
+    ),
     tags$style(HTML("
       html, body {
         width: 100% !important;

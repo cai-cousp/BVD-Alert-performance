@@ -78,7 +78,7 @@ jobs:
 
       - name: Export ShinyApp with Shinylive (webR)
         run: |
-          Rscript -e 'shinylive::export("ShinyApp", "site", wasm_packages = FALSE)'
+          Rscript ShinyApp/deploy/build_shinylive.R --no-prep
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

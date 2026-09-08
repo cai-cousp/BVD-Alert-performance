@@ -111,6 +111,25 @@ tryCatch({
     quiet = FALSE
   )
   message("\nExport completed successfully to: ", dest_path)
+  # Inject Plotly and DataTables into index.html so webR/htmlwidgets find them immediately
+  index_file <- file.path(dest_path, "index.html")
+  if (file.exists(index_file)) {
+    index_html <- paste(readLines(index_file, warn = FALSE), collapse = "\n")
+    if (!grepl("plotly-2.35.2.min.js", index_html, fixed = TRUE)) {
+      head_inject <- paste0(
+        "    <!-- Plotly & DataTables CDN libraries for webR Shinylive -->\n",
+        "    <script src=\"https://cdn.plot.ly/plotly-2.35.2.min.js\" charset=\"utf-8\"></script>\n",
+        "    <link rel=\"stylesheet\" type=\"text/css\" href=\"https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css\"/>\n",
+        "    <script type=\"text/javascript\" src=\"https://code.jquery.com/jquery-3.7.1.min.js\"></script>\n",
+        "    <script type=\"text/javascript\" src=\"https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js\"></script>\n",
+        "    <script type=\"text/javascript\" src=\"https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js\"></script>\n",
+        "  </head>"
+      )
+      index_html <- sub("</head>", head_inject, index_html, fixed = TRUE)
+      writeLines(index_html, index_file)
+      message("Injected Plotly and DataTables scripts into ", index_file)
+    }
+  }
 }, error = function(e) {
   stop("Failed to export with shinylive: ", conditionMessage(e))
 })
