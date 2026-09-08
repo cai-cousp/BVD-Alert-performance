@@ -21,6 +21,12 @@ source("R/mod_export.R")
 ui <- tagList(
   # Custom CSS & inline full-width enforcement
   tags$head(
+    tags$link(rel = "preconnect", href = "https://fonts.googleapis.com"),
+    tags$link(rel = "preconnect", href = "https://fonts.gstatic.com", crossorigin = ""),
+    tags$link(
+      rel = "stylesheet",
+      href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    ),
     tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
     tags$style(HTML("
       html, body {
