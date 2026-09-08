@@ -1591,6 +1591,9 @@ plot_adequacy_stacked_interactive <- function(...,
     error = function(e) NULL
   )
   if (!is.null(gp)) {
+    if (!isTRUE(show_header)) {
+      gp <- plotly::layout(gp, title = list(text = ""))
+    }
     if (!isTRUE(show_legend)) {
       gp <- plotly::layout(gp, showlegend = FALSE)
     } else {
