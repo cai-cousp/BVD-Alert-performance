@@ -2,6 +2,22 @@
 # BVD Alerts Dashboard — Interactive notification map helpers
 # =============================================================================
 
+notification_adequacy_levels <- c("Under-alerting", "Adequate", "Over-alerting")
+
+notification_adequacy_palette <- c(
+  "Under-alerting" = "#D55E00",
+  "Adequate"       = "#009E73",
+  "Over-alerting"  = "#CC79A7"
+)
+
+notification_adequacy_labels_fr <- c(
+  "Under-alerting" = "Sous-notification",
+  "Adequate"       = "Notification adéquate",
+  "Over-alerting"  = "Surnotification"
+)
+
+notification_na_fill <- "#F4F4F4"
+notification_na_label_fr <- "Pas de données / hors analyse"
 notification_ensemble_label <- "Ensemble de la zone affectée"
 
 require_map_columns <- function(data, columns, arg) {
