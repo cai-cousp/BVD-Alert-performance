@@ -181,8 +181,27 @@ notification_map_lookup <- function(map_data) {
 #' HTML tooltip for a notification map polygon
 build_notification_hover_label <- function(row) {
   category_key <- as.character(row$adequacy_category_recomputed)
-  category <- notification_adequacy_labels_fr[[category_key]] %||%
+  category <- if (length(category_key) == 1L && !is.na(category_key) && category_key %in% names(notification_adequacy_labels_fr)) {
+    notification_adequacy_labels_fr[[category_key]]
+  } else {
     notification_na_label_fr
+  }
+
+  zone_name <- row$zone_sante_notification
+  if (is.null(zone_name) || is.na(zone_name) || !nzchar(zone_name)) {
+    zone_name <- row$zonesante
+  }
+  if (is.null(zone_name) || is.na(zone_name) || !nzchar(zone_name)) {
+    zone_name <- "Pas de données"
+  }
+
+  prov_name <- row$province_notification
+  if (is.null(prov_name) || is.na(prov_name) || !nzchar(prov_name)) {
+    prov_name <- row$province
+  }
+  if (is.null(prov_name) || is.na(prov_name) || !nzchar(prov_name)) {
+    prov_name <- "&mdash;"
+  }
 
   htmltools::HTML(
     sprintf(
@@ -197,8 +216,8 @@ build_notification_hover_label <- function(row) {
         "<span>Catégorie :</span> %s",
         "</div>"
       ),
-      htmltools::htmlEscape(row$zone_sante_notification %||% "Pas de données"),
-      htmltools::htmlEscape(row$province_notification %||% row$province %||% "&mdash;"),
+      htmltools::htmlEscape(zone_name),
+      htmltools::htmlEscape(prov_name),
       format_map_metric(as.numeric(row$total_alerts), digits = 0L),
       format_map_metric(as.numeric(row$case_adequacy_recent)),
       format_map_metric(as.numeric(row$death_adequacy_recent)),

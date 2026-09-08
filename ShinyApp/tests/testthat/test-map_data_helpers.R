@@ -87,6 +87,22 @@ test_that("hover labels contain every requested indicator", {
   expect_true(grepl("Catégorie", label, fixed = TRUE))
 })
 
+test_that("hover labels handle NA category and unnotified zones without subscript out of bounds error", {
+  row_na <- tibble::tibble(
+    zone_sante_notification = NA_character_,
+    zonesante = "Zone Test",
+    province_notification = NA_character_,
+    province = "Ituri",
+    adequacy_category_recomputed = NA_character_,
+    total_alerts = NA_real_,
+    case_adequacy_recent = NA_real_,
+    death_adequacy_recent = NA_real_,
+    mean_aai_recent = NA_real_
+  )
+  expect_no_error(label <- as.character(build_notification_hover_label(row_na)))
+  expect_true(grepl("Zone Test", label, fixed = TRUE))
+})
+
 test_that("selected-zone national-style tables have the expected structure", {
   skip_if(!exists("trends_smooth_adeq"), message = "global trends not loaded")
 
