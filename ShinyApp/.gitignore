@@ -1,0 +1,6 @@
+/.quarto/
+**/*.quarto_ipynb
+
+# Ensure bundled deployment data is tracked in git for GitHub Pages / Shinylive
+!/data/
+!/data/**

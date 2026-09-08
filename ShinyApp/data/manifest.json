@@ -1,0 +1,58 @@
+{
+  "generated_at": "2026-09-08 17:24:38 WAT",
+  "source_output_dir": "2026_09_07",
+  "date_stamp": {},
+  "health_zones_count": 58,
+  "weeks_count": 23,
+  "total_payload_kb": 684.54,
+  "files": [
+    {
+      "filename": "01_intermediate_parameters.rds",
+      "size_kb": 201.28
+    },
+    {
+      "filename": "01_thresholds_synthesis.rds",
+      "size_kb": 11.03
+    },
+    {
+      "filename": "02_recent_adequacy.xlsx",
+      "size_kb": 9.51
+    },
+    {
+      "filename": "02_trends_smooth_adeq.rds",
+      "size_kb": 54.52
+    },
+    {
+      "filename": "intermediate_params.rds",
+      "size_kb": 201.28
+    },
+    {
+      "filename": "manifest.json",
+      "size_kb": 1.13
+    },
+    {
+      "filename": "notification_map_data.rds",
+      "size_kb": 111.94
+    },
+    {
+      "filename": "province_label_data.rds",
+      "size_kb": 0.26
+    },
+    {
+      "filename": "province_map_data.rds",
+      "size_kb": 18.54
+    },
+    {
+      "filename": "recent_adequacy.xlsx",
+      "size_kb": 9.51
+    },
+    {
+      "filename": "synthesis.rds",
+      "size_kb": 11.03
+    },
+    {
+      "filename": "trends_smooth_adeq.rds",
+      "size_kb": 54.52
+    }
+  ]
+}
