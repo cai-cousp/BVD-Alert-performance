@@ -1,0 +1,1642 @@
+---
+format:
+  html:
+    theme: flatly
+    page-layout: full
+    toc: true
+    toc-title: "Table des matières"
+    toc-depth: 3
+    number-sections: true
+    embed-resources: true
+    self-contained: true
+    code-fold: false
+    code-tools: false
+    fig-align: center
+params:
+  project_root: null
+  date_start: null
+  date_end: null
+  selected_hzs: null
+  alert_level: "all"
+  output_file: "report.html"
+---
+
+```{=html}
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1e293b;
+    background-color: #ffffff;
+  }
+  .page-columns .main, .page-columns .content, .page-columns .body {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .main-container, main.content {
+    max-width: 96% !important;
+    margin: 0 auto !important;
+    padding: 1.5rem 1.5rem !important;
+  }
+  .report-header-banner {
+    background: linear-gradient(135deg, #1e3a8a 0%, #0d6efd 100%);
+    color: white;
+    padding: 1.75rem 2rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    width: 100%;
+  }
+  .report-header-banner h1 {
+    color: white;
+    margin: 0 0 0.5rem 0;
+    font-weight: 700;
+    font-size: 1.85rem;
+  }
+  .report-header-subtitle {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 1rem 0 !important;
+    opacity: 0.95;
+  }
+  .report-header-banner p {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+    line-height: 1.6;
+  }
+  .report-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .report-header-titles {
+    flex: 1 1 550px;
+  }
+  .btn-online-app {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .btn-online-app:hover {
+    background: #ffffff;
+    color: #0d6efd !important;
+    border-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+  }
+  .btn-online-app svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .report-online-link {
+    color: #bae6fd !important;
+    text-decoration: underline !important;
+    font-weight: 600;
+    word-break: break-all;
+    transition: color 0.15s ease;
+  }
+  .report-online-link:hover {
+    color: #ffffff !important;
+  }
+  .kpi-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin: 1.5rem 0;
+  }
+  .kpi-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    border-left: 4px solid #0d6efd;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  }
+  .kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.25rem;
+  }
+  .kpi-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .kpi-subtext {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    margin-top: 0.3rem;
+  }
+  .callout-custom {
+    background-color: #f0fdf4;
+    border-left: 4px solid #16a34a;
+    padding: 1rem 1.25rem;
+    border-radius: 6px;
+    margin: 1.25rem 0;
+  }
+  table.table {
+    width: 100% !important;
+    margin-bottom: 1.5rem;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 4px;
+    color: #ffffff !important;
+    text-align: center;
+  }
+  .status-sous {
+    background-color: #dc2626 !important;
+  }
+  .status-adequat {
+    background-color: #16a34a !important;
+  }
+  .status-sur {
+    background-color: #d97706 !important;
+  }
+
+  /* ----------------------------------------------------------------------- */
+  /* Styles pour les conteneurs et boutons de téléchargement d'exportation   */
+  /* ----------------------------------------------------------------------- */
+  .quarto-float-fig,
+  .quarto-float-tbl,
+  .quarto-figure,
+  .exportable-container {
+    position: relative !important;
+  }
+
+  .quarto-float-tbl figcaption,
+  .quarto-float-caption-top {
+    padding-right: 160px !important;
+  }
+
+  .export-action-bar {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    z-index: 40;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    padding: 3px 5px;
+    border-radius: 6px;
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.07);
+    transition: opacity 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+
+  .export-action-bar:hover {
+    background: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  }
+
+  .btn-report-export {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.2;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.15s ease-in-out;
+    user-select: none;
+    font-family: inherit;
+    outline: none;
+  }
+
+  .btn-report-export svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+
+  /* Bouton PNG (HD) */
+  .btn-export-png {
+    background-color: #f8fafc;
+    color: #334155;
+    border-color: #cbd5e1;
+  }
+
+  .btn-export-png:hover {
+    background-color: #0d6efd;
+    color: #ffffff;
+    border-color: #0d6efd;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.25);
+  }
+
+  .btn-export-png:active {
+    transform: scale(0.96);
+  }
+
+  /* Bouton XLSX (Excel) */
+  .btn-export-xlsx {
+    background-color: #f0fdf4;
+    color: #166534;
+    border-color: #bbf7d0;
+  }
+
+  .btn-export-xlsx:hover {
+    background-color: #16a34a;
+    color: #ffffff;
+    border-color: #16a34a;
+    box-shadow: 0 2px 4px rgba(22, 163, 74, 0.25);
+  }
+
+  .btn-export-xlsx:active {
+    transform: scale(0.96);
+  }
+
+  @keyframes export-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .export-spinner {
+    animation: export-spin 1s linear infinite;
+  }
+
+  @media print {
+    .export-action-bar,
+    .btn-online-app {
+      display: none !important;
+    }
+  }
+</style>
+
+<!-- Scripts d'exportation SheetJS (xlsx) et html2canvas -->
+<script src="www/js/xlsx.full.min.js"></script>
+<script src="www/js/html2canvas.min.js"></script>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- Chargement résilient des dépendances si nécessaire ---
+  function ensureXLSX(callback) {
+    if (window.XLSX && window.XLSX.utils) {
+      callback(window.XLSX);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = function() { callback(window.XLSX); };
+    script.onerror = function() {
+      alert("Impossible de charger la bibliothèque d'exportation Excel (XLSX).");
+    };
+    document.head.appendChild(script);
+  }
+
+  function ensureHtml2Canvas(callback) {
+    if (typeof window.html2canvas === 'function') {
+      callback(window.html2canvas);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = function() { callback(window.html2canvas); };
+    script.onerror = function() {
+      alert("Impossible de charger la bibliothèque de capture d'image (html2canvas).");
+    };
+    document.head.appendChild(script);
+  }
+
+  // --- Nettoyage et génération de nom de fichier ---
+  function getCleanFilename(element, defaultPrefix, extension) {
+    let title = '';
+    const figcaption = element.querySelector('figcaption');
+    if (figcaption && figcaption.innerText && figcaption.innerText.trim()) {
+      title = figcaption.innerText.trim();
+    } else {
+      const parentFloat = element.closest('.quarto-float') || element;
+      if (parentFloat.id) {
+        title = parentFloat.id;
+      } else {
+        const heading = element.closest('section')?.querySelector('h2, h3, h4');
+        if (heading) title = heading.innerText.trim();
+      }
+    }
+
+    if (!title) title = defaultPrefix;
+
+    let clean = title
+      .replace(/^(Figure|Fig\.|Table|Tableau)\s*[\d\.\:]*\s*[-–:]*\s*/i, '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '')
+      .substring(0, 45);
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    return `BVD_${clean || defaultPrefix}_${dateStr}.${extension}`;
+  }
+
+  // --- Téléchargement d'un graphique en PNG HD ---
+  function downloadPlotPNG(figureEl, btn) {
+    const img = figureEl.querySelector('img');
+    if (!img) {
+      alert("Image du graphique introuvable.");
+      return;
+    }
+
+    const filename = getCleanFilename(figureEl, 'Graphique', 'png');
+
+    if (img.src && img.src.startsWith('data:image/')) {
+      const link = document.createElement('a');
+      link.href = img.src;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth || image.width;
+      canvas.height = image.naturalHeight || image.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0);
+
+      canvas.toBlob(function(blob) {
+        if (!blob) {
+          alert("Erreur lors de la génération de l'image PNG.");
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      }, 'image/png');
+    };
+    image.src = img.src;
+  }
+
+  // --- Téléchargement d'un tableau en PNG HD (html2canvas 3x scale) ---
+  function downloadTablePNG(tableWrapper, btn) {
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = `<svg class="export-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="16"></circle></svg> <span>Capture...</span>`;
+    btn.disabled = true;
+
+    const actionBar = tableWrapper.querySelector('.export-action-bar');
+    if (actionBar) actionBar.style.visibility = 'hidden';
+
+    const target = tableWrapper.querySelector('.table-responsive') || tableWrapper.querySelector('table') || tableWrapper;
+    const filename = getCleanFilename(tableWrapper, 'Tableau', 'png');
+
+    ensureHtml2Canvas(function(html2canvas) {
+      html2canvas(target, {
+        scale: 3,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        logging: false,
+        scrollX: 0,
+        scrollY: 0
+      }).then(function(canvas) {
+        if (actionBar) actionBar.style.visibility = 'visible';
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            alert("Erreur lors de la création du fichier PNG du tableau.");
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        }, 'image/png');
+      }).catch(function(err) {
+        console.error('Erreur html2canvas:', err);
+        if (actionBar) actionBar.style.visibility = 'visible';
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        alert("Erreur lors de la capture de l'image du tableau.");
+      });
+    });
+  }
+
+  // --- Téléchargement d'un tableau en XLSX (SheetJS) ---
+  function downloadTableXLSX(tableWrapper, btn) {
+    const table = tableWrapper.querySelector('table');
+    if (!table) {
+      alert("Tableau introuvable.");
+      return;
+    }
+
+    const filename = getCleanFilename(tableWrapper, 'Tableau', 'xlsx');
+
+    ensureXLSX(function(XLSX) {
+      try {
+        const clone = table.cloneNode(true);
+        clone.querySelectorAll('.export-action-bar, script, style').forEach(function(el) { el.remove(); });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.table_to_sheet(clone, { raw: false });
+
+        if (ws['!ref']) {
+          const range = XLSX.utils.decode_range(ws['!ref']);
+          const colWidths = [];
+          for (let C = range.s.c; C <= range.e.c; ++C) {
+            let maxLen = 10;
+            for (let R = range.s.r; R <= range.e.r; ++R) {
+              const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+              if (cell && cell.v) {
+                const strVal = String(cell.v).trim();
+                if (strVal.length > maxLen) maxLen = Math.min(strVal.length + 3, 40);
+              }
+            }
+            colWidths.push({ wch: maxLen });
+          }
+          ws['!cols'] = colWidths;
+        }
+
+        XLSX.utils.book_append_sheet(wb, ws, "Donnees");
+        XLSX.writeFile(wb, filename);
+      } catch (e) {
+        console.error('Erreur export XLSX:', e);
+        alert("Erreur lors de l'exportation du tableau vers Excel.");
+      }
+    });
+  }
+
+  // --- Attachement des barres d'action aux figures et tableaux ---
+  function attachExportButtons() {
+    // 1. Figures (Graphiques)
+    const figureContainers = document.querySelectorAll(
+      '.quarto-float-fig, figure.quarto-float-fig, .cell-output-display figure, .quarto-layout-cell .quarto-figure'
+    );
+    figureContainers.forEach(function(fig) {
+      const img = fig.querySelector('img');
+      const table = fig.querySelector('table');
+      if (img && !table && !fig.querySelector('.export-action-bar')) {
+        fig.classList.add('exportable-container');
+
+        const bar = document.createElement('div');
+        bar.className = 'export-action-bar export-plot-bar';
+        bar.innerHTML = `
+          <button type="button" class="btn-report-export btn-export-png" title="Télécharger le graphique en PNG haute définition (HD)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>PNG (HD)</span>
+          </button>
+        `;
+
+        bar.querySelector('.btn-export-png').addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadPlotPNG(fig, this);
+        });
+
+        fig.appendChild(bar);
+      }
+    });
+
+    // 2. Tableaux (Tables)
+    const tableNodes = document.querySelectorAll('table.table, .quarto-float-tbl table');
+    const processedTables = new Set();
+
+    tableNodes.forEach(function(tbl) {
+      if (processedTables.has(tbl)) return;
+      processedTables.add(tbl);
+
+      const container = tbl.closest('.quarto-float-tbl') || tbl.closest('figure') || tbl.closest('.table-responsive') || tbl.parentElement;
+      if (container && !container.querySelector('.export-action-bar')) {
+        container.classList.add('exportable-container');
+
+        const bar = document.createElement('div');
+        bar.className = 'export-action-bar export-table-bar';
+        bar.innerHTML = `
+          <button type="button" class="btn-report-export btn-export-png" title="Télécharger le tableau en PNG haute définition (HD)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <circle cx="8.5" cy="8.5" r="1.5"></circle>
+              <polyline points="21 15 16 10 5 21"></polyline>
+            </svg>
+            <span>PNG (HD)</span>
+          </button>
+          <button type="button" class="btn-report-export btn-export-xlsx" title="Télécharger le tableau au format Excel (.xlsx)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="8" y1="13" x2="16" y2="13"></line>
+              <line x1="8" y1="17" x2="16" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>XLSX</span>
+          </button>
+        `;
+
+        bar.querySelector('.btn-export-png').addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadTablePNG(container, this);
+        });
+
+        bar.querySelector('.btn-export-xlsx').addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          downloadTableXLSX(container, this);
+        });
+
+        container.appendChild(bar);
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', attachExportButtons);
+  } else {
+    attachExportButtons();
+  }
+  window.addEventListener('load', attachExportButtons);
+})();
+</script>
+```
+
+```{r setup, include=FALSE}
+# Disable scientific notation globally
+options(scipen = 999)
+
+knitr::opts_chunk$set(
+     echo = FALSE,
+     warning = FALSE,
+     message = FALSE,
+     fig.width = 10,
+     fig.height = 5.5,
+     dpi = 300
+)
+
+library(dplyr)
+library(tidyr)
+library(readr)
+library(readxl)
+library(tibble)
+library(stringr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(scales)
+
+# -------------------------------------------------------------------------
+# 1. Localiser les données et les modules de calcul
+# -------------------------------------------------------------------------
+find_project_root <- function() {
+     if (nzchar(Sys.getenv("ALERTS_PROJECT_ROOT"))) {
+          return(Sys.getenv("ALERTS_PROJECT_ROOT"))
+     }
+     if (exists("params") && !is.null(params$project_root) && dir.exists(params$project_root)) {
+          return(params$project_root)
+     }
+     for (parent in c(".", "..", "../..", "../../..", "../../../..")) {
+          cand <- normalizePath(file.path(getwd(), parent), mustWork = FALSE)
+          if (dir.exists(file.path(cand, "ShinyApp")) && dir.exists(file.path(cand, "output"))) {
+               return(cand)
+          }
+          if (file.exists(file.path(cand, "Alerts.Rproj"))) {
+               return(cand)
+          }
+     }
+     known_path <- "/Users/Yalungu/Documents/Consultance/MVE Ituri/EVD17/DataAnalysis/Alerts"
+     if (dir.exists(known_path)) {
+          return(known_path)
+     }
+     getwd()
+}
+
+project_root <- find_project_root()
+output_base <- file.path(project_root, "output")
+
+# Sourcing des helpers et fonctions graphiques
+if (file.exists(file.path(project_root, "R", "alert_helpers.R"))) {
+     source(file.path(project_root, "R", "alert_helpers.R"))
+}
+if (file.exists(file.path(project_root, "R", "alert_plots.R"))) {
+     source(file.path(project_root, "R", "alert_plots.R"))
+}
+
+# -------------------------------------------------------------------------
+# 2. Charger les données de sortie les plus récentes
+# -------------------------------------------------------------------------
+output_dirs <- list.dirs(output_base, recursive = FALSE, full.names = TRUE)
+valid_dirs <- output_dirs[
+     (lengths(lapply(output_dirs, function(d) list.files(d, pattern = "^01_thresholds_synthesis.*\\.rds$"))) > 0) &
+          (lengths(lapply(output_dirs, function(d) list.files(d, pattern = "^02_trends_smooth.*\\.rds$"))) > 0)
+]
+
+if (length(valid_dirs) == 0) {
+     valid_dirs <- output_dirs[
+          lengths(lapply(output_dirs, function(d) list.files(d, pattern = "^01_thresholds_synthesis.*\\.rds$"))) > 0
+     ]
+}
+
+latest_dir <- if (length(valid_dirs) > 0) sort(valid_dirs, decreasing = TRUE)[[1]] else output_base
+
+# Carte de performance de notification (générée par R/03b_alert_notification_performance_map.R)
+notification_map_files <- sort(
+     list.files(
+          latest_dir,
+          pattern = "^03b_alert_notification_performance_map(_.*)?\\.png$",
+          full.names = TRUE
+     ),
+     decreasing = TRUE
+)
+notification_map_path <- if (length(notification_map_files) > 0) notification_map_files[[1]] else NULL
+notification_map_audit_path <- file.path(
+     latest_dir,
+     "03b_alert_notification_performance_map_audit.xlsx"
+)
+notification_map_summary <- tryCatch(
+     {
+          if (!is.null(notification_map_path) && file.exists(notification_map_audit_path)) {
+               readxl::read_excel(notification_map_audit_path, sheet = "Résumé")
+          } else {
+               NULL
+          }
+     },
+     error = function(e) NULL
+)
+notification_map_categories <- tryCatch(
+     {
+          if (!is.null(notification_map_summary)) {
+               mapped <- readxl::read_excel(
+                    notification_map_audit_path,
+                    sheet = "Zones cartographiées"
+               )
+               mapped |>
+                    dplyr::count(.data$Catégorie, name = "n_zones") |>
+                    dplyr::arrange(dplyr::desc(.data$n_zones))
+          } else {
+               NULL
+          }
+     },
+     error = function(e) NULL
+)
+
+# Chargement de la synthèse et des séries chronologiques
+synthesis_files <- sort(
+     list.files(latest_dir, pattern = "^01_thresholds_synthesis.*\\.rds$", full.names = TRUE),
+     decreasing = TRUE
+)
+synthesis <- readRDS(synthesis_files[[1]]) |>
+     tibble::as_tibble()
+
+param_files <- sort(
+     list.files(latest_dir, pattern = "^01_intermediate_parameters.*\\.rds$", full.names = TRUE),
+     decreasing = TRUE
+)
+intermediate_params <- if (length(param_files) > 0) readRDS(param_files[[1]]) else list()
+
+trend_files <- sort(
+     list.files(latest_dir, pattern = "^02_trends_smooth_adeq.*\\.rds$", full.names = TRUE),
+     decreasing = TRUE
+)
+if (length(trend_files) == 0) {
+     trend_files <- sort(
+          list.files(latest_dir, pattern = "^02_trends_smooth.*\\.rds$", full.names = TRUE),
+          decreasing = TRUE
+     )
+}
+trends_smooth_adeq <- readRDS(trend_files[[1]]) |>
+     tibble::as_tibble()
+
+if ("week_start" %in% names(trends_smooth_adeq)) {
+     trends_smooth_adeq <- trends_smooth_adeq |>
+          mutate(week_start = as.Date(.data$week_start))
+}
+
+all_time_windows <- sort(unique(trends_smooth_adeq$threshold_time_key))
+start_window_date <- min(as.Date(all_time_windows), na.rm = TRUE)
+end_window_date <- max(as.Date(all_time_windows), na.rm = TRUE) + 6L
+
+# Date d'état des données DHIS2 (résolue via resolve_source_date)
+dhis2_source_date <- if (exists("resolve_source_date")) {
+     resolve_source_date(trends_smooth_adeq)
+} else if (!is.null(intermediate_params$evd_max_date)) {
+     as.Date(intermediate_params$evd_max_date)
+} else {
+     end_window_date
+}
+
+report_year <- format(dhis2_source_date, "%Y")
+author_header <- paste0("IOA-CAI © ", report_year)
+
+# -------------------------------------------------------------------------
+# 3. Tables pour le niveau Global (Ensemble de la zone affectée)
+# -------------------------------------------------------------------------
+t1_ensemble_all <- trends_smooth_adeq |>
+     dplyr::filter(zone_sante_notification == "Ensemble de la zone affectée") |>
+     dplyr::select(
+          threshold_time_key,
+          case_alerts, death_alerts, total_alerts,
+          Alert_case_threshold, Alert_death_threshold,
+          case_adequacy, death_adequacy, aai
+     ) |>
+     dplyr::arrange(dplyr::desc(threshold_time_key))
+
+ensemble_cdp <- intermediate_params$case_derived_params |>
+     dplyr::filter(zone_sante_notification == "Ensemble de la zone affectée") |>
+     dplyr::select(threshold_time_key, estimated_true_cases_recent)
+
+recent_ensemble <- intermediate_params$recent_cases |>
+     dplyr::mutate(
+          n_recent_confirmed_nowcast = dplyr::coalesce(n_recent_confirmed_nowcast, n_recent_confirmed)
+     ) |>
+     dplyr::summarise(
+          n_recent_confirmed = sum(n_recent_confirmed, na.rm = TRUE),
+          n_recent_confirmed_nowcast = sum(n_recent_confirmed_nowcast, na.rm = TRUE),
+          .by = threshold_time_key
+     )
+
+t2_ensemble_all <- ensemble_cdp |>
+     dplyr::left_join(recent_ensemble, by = "threshold_time_key") |>
+     dplyr::mutate(
+          detection_rate_adj = dplyr::if_else(
+               estimated_true_cases_recent > 0,
+               n_recent_confirmed_nowcast / estimated_true_cases_recent,
+               NA_real_
+          ),
+          detection_rate_adj = dplyr::if_else(is.finite(detection_rate_adj), detection_rate_adj, NA_real_)
+     ) |>
+     dplyr::arrange(dplyr::desc(threshold_time_key))
+
+# Dernières 6 semaines pour l'Ensemble
+last_6_windows <- tail(sort(all_time_windows), 6)
+
+t1_ens_6 <- t1_ensemble_all |> dplyr::filter(threshold_time_key %in% last_6_windows)
+t2_ens_6 <- t2_ensemble_all |> dplyr::filter(threshold_time_key %in% last_6_windows)
+
+ensemble_6_combined <- t1_ens_6 |>
+     dplyr::left_join(
+          t2_ens_6 |> dplyr::select(
+               threshold_time_key,
+               n_recent_confirmed, detection_rate_adj,
+               estimated_true_cases_recent
+          ),
+          by = "threshold_time_key"
+     ) |>
+     dplyr::arrange(dplyr::desc(threshold_time_key))
+
+# Total cumulé des cas confirmés issu de la ligne de liste complète (persisté
+# par 01_alert_thresholds.R) ; repli sur la somme des semaines si absent
+global_total_confirmed <- if (!is.null(intermediate_params$total_confirmed_cases)) {
+     intermediate_params$total_confirmed_cases
+} else {
+     sum(t2_ensemble_all$n_recent_confirmed, na.rm = TRUE)
+}
+global_mean_det_rate <- mean(t2_ensemble_all$detection_rate_adj, na.rm = TRUE)
+global_epidemic_size <- sum(t2_ensemble_all$estimated_true_cases_recent, na.rm = TRUE)
+
+# Ratio de sous-notification moyen
+under_reporting_ratio <- if (global_total_confirmed > 0) global_epidemic_size / global_total_confirmed else NA_real_
+
+# -------------------------------------------------------------------------
+# 4. Top 6 zones de santé les plus affectées
+# -------------------------------------------------------------------------
+top6_hz_names <- intermediate_params$recent_cases |>
+     dplyr::filter(zone_sante_notification != "Ensemble de la zone affectée") |>
+     dplyr::summarise(
+          tot_cases = sum(n_recent_confirmed, na.rm = TRUE),
+          tot_nowcast = sum(dplyr::coalesce(n_recent_confirmed_nowcast, n_recent_confirmed), na.rm = TRUE),
+          .by = zone_sante_notification
+     ) |>
+     dplyr::arrange(dplyr::desc(tot_cases)) |>
+     head(6) |>
+     dplyr::pull(zone_sante_notification)
+
+last_window_key <- max(all_time_windows)
+
+# Tableaux de la dernière semaine pour les 6 zones
+table1_hz_last <- trends_smooth_adeq |>
+     dplyr::filter(
+          threshold_time_key == last_window_key,
+          zone_sante_notification %in% top6_hz_names
+     ) |>
+     dplyr::select(
+          zone_sante_notification, Province,
+          case_alerts, death_alerts, total_alerts,
+          Alert_case_threshold, Alert_death_threshold,
+          case_adequacy, death_adequacy, aai
+     )
+
+table2_hz_last <- intermediate_params$multipliers |>
+     dplyr::filter(
+          threshold_time_key == last_window_key,
+          zone_sante_notification %in% top6_hz_names
+     ) |>
+     dplyr::select(zone_sante_notification) |>
+     dplyr::left_join(
+          intermediate_params$recent_cases |>
+               dplyr::filter(threshold_time_key == last_window_key) |>
+               dplyr::select(zone_sante_notification, n_recent_confirmed, n_recent_confirmed_nowcast),
+          by = "zone_sante_notification"
+     ) |>
+     dplyr::left_join(
+          combine_detection_estimates_by_hz(
+               intermediate_params$detection_backcalc,
+               intermediate_params$detection_rates,
+               recent_cases = intermediate_params$recent_cases
+          ) |>
+               dplyr::filter(threshold_time_key == last_window_key) |>
+               dplyr::select(zone_sante_notification, detection_rate_adj),
+          by = "zone_sante_notification"
+     ) |>
+     dplyr::mutate(
+          n_recent_confirmed_nowcast = dplyr::coalesce(n_recent_confirmed_nowcast, n_recent_confirmed),
+          estimated_true_cases_recent = dplyr::if_else(
+               n_recent_confirmed_nowcast == 0, 0, n_recent_confirmed_nowcast / detection_rate_adj
+          )
+     )
+
+hz_last_window_combined <- table1_hz_last |>
+     dplyr::left_join(
+          table2_hz_last |> dplyr::select(
+               zone_sante_notification,
+               n_recent_confirmed, detection_rate_adj,
+               estimated_true_cases_recent
+          ),
+          by = "zone_sante_notification"
+     ) |>
+     dplyr::arrange(aai, dplyr::desc(total_alerts))
+
+# Synthèse globale sur toutes les semaines pour les 6 zones
+hz_cases_summary <- intermediate_params$recent_cases |>
+     dplyr::filter(zone_sante_notification %in% top6_hz_names) |>
+     dplyr::summarise(
+          total_reported_cases = sum(n_recent_confirmed, na.rm = TRUE),
+          total_nowcast_cases = sum(dplyr::coalesce(n_recent_confirmed_nowcast, n_recent_confirmed), na.rm = TRUE),
+          .by = zone_sante_notification
+     )
+
+hz_db_summary <- intermediate_params$detection_backcalc |>
+     dplyr::filter(zone_sante_notification %in% top6_hz_names) |>
+     dplyr::summarise(
+          mean_detection_rate = mean(detection_rate_adj, na.rm = TRUE),
+          total_true_cases = sum(estimated_true_cases, na.rm = TRUE),
+          .by = zone_sante_notification
+     )
+
+hz_adeq_summary <- trends_smooth_adeq |>
+     dplyr::filter(zone_sante_notification %in% top6_hz_names) |>
+     dplyr::summarise(
+          Province = dplyr::first(Province),
+          total_alerts = sum(total_alerts, na.rm = TRUE),
+          mean_aai = mean(aai, na.rm = TRUE),
+          .by = zone_sante_notification
+     ) |>
+     dplyr::mutate(
+          adequacy_category = dplyr::case_when(
+               mean_aai < 0.5 ~ "Sous-notification",
+               mean_aai <= 2.0 ~ "Adéquat",
+               TRUE ~ "Sur-notification"
+          ),
+          status_class = dplyr::case_when(
+               mean_aai < 0.5 ~ "status-sous",
+               mean_aai <= 2.0 ~ "status-adequat",
+               TRUE ~ "status-sur"
+          )
+     )
+
+top6_hz_summary_table <- hz_adeq_summary |>
+     dplyr::left_join(hz_cases_summary, by = "zone_sante_notification") |>
+     dplyr::left_join(hz_db_summary, by = "zone_sante_notification") |>
+     dplyr::arrange(dplyr::desc(total_reported_cases))
+
+# -------------------------------------------------------------------------
+# 5. Synthèse dynamique sur les 3 dernières semaines (utilisée en conclusion)
+# -------------------------------------------------------------------------
+last_3_weeks <- tail(all_time_windows, 3)
+w_dates <- as.Date(last_3_weeks)
+w_labels <- format(w_dates, "%d/%m")
+start_3w_date <- min(w_dates)
+end_3w_date <- max(w_dates) + 6L
+
+# --- A. Ensemble de la zone affectée (3 dernières semaines) ---
+ens_3w_rows <- trends_smooth_adeq |>
+     dplyr::filter(
+          zone_sante_notification == "Ensemble de la zone affectée",
+          threshold_time_key %in% last_3_weeks
+     ) |>
+     dplyr::arrange(threshold_time_key)
+
+ens_cases_3w <- intermediate_params$recent_cases |>
+     dplyr::filter(threshold_time_key %in% last_3_weeks) |>
+     dplyr::summarise(
+          n_confirmed = sum(n_recent_confirmed, na.rm = TRUE),
+          n_nowcast = sum(dplyr::coalesce(n_recent_confirmed_nowcast, n_recent_confirmed), na.rm = TRUE),
+          .by = threshold_time_key
+     ) |>
+     dplyr::arrange(threshold_time_key)
+
+ens_tot_case_alerts_3w <- sum(ens_3w_rows$case_alerts, na.rm = TRUE)
+ens_tot_death_alerts_3w <- sum(ens_3w_rows$death_alerts, na.rm = TRUE)
+ens_tot_alerts_3w <- sum(ens_3w_rows$total_alerts, na.rm = TRUE)
+
+ens_aai_w1 <- ens_3w_rows$aai[1]
+ens_aai_w2 <- ens_3w_rows$aai[2]
+ens_aai_w3 <- ens_3w_rows$aai[3]
+ens_mean_aai_3w <- mean(ens_3w_rows$aai, na.rm = TRUE)
+ens_mean_case_adeq_3w <- mean(ens_3w_rows$case_adequacy, na.rm = TRUE)
+ens_mean_death_adeq_3w <- mean(ens_3w_rows$death_adequacy, na.rm = TRUE)
+
+ens_change_alerts_w1_w3 <- if (ens_3w_rows$total_alerts[1] > 0) {
+     (ens_3w_rows$total_alerts[3] - ens_3w_rows$total_alerts[1]) / ens_3w_rows$total_alerts[1]
+} else {
+     NA_real_
+}
+ens_change_deaths_w1_w3 <- if (ens_3w_rows$death_alerts[1] > 0) {
+     (ens_3w_rows$death_alerts[3] - ens_3w_rows$death_alerts[1]) / ens_3w_rows$death_alerts[1]
+} else {
+     NA_real_
+}
+ens_change_cases_w1_w3 <- if (ens_3w_rows$case_alerts[1] > 0) {
+     (ens_3w_rows$case_alerts[3] - ens_3w_rows$case_alerts[1]) / ens_3w_rows$case_alerts[1]
+} else {
+     NA_real_
+}
+
+ens_tot_confirmed_3w <- sum(ens_cases_3w$n_confirmed, na.rm = TRUE)
+ens_tot_nowcast_3w <- sum(ens_cases_3w$n_nowcast, na.rm = TRUE)
+
+# --- B. Top 6 zones les plus affectées (3 dernières semaines) ---
+top6_3w_rows <- trends_smooth_adeq |>
+     dplyr::filter(
+          zone_sante_notification %in% top6_hz_names,
+          threshold_time_key %in% last_3_weeks
+     )
+
+top6_cases_3w <- intermediate_params$recent_cases |>
+     dplyr::filter(
+          zone_sante_notification %in% top6_hz_names,
+          threshold_time_key %in% last_3_weeks
+     ) |>
+     dplyr::summarise(
+          n_confirmed = sum(n_recent_confirmed, na.rm = TRUE),
+          n_nowcast = sum(dplyr::coalesce(n_recent_confirmed_nowcast, n_recent_confirmed), na.rm = TRUE),
+          .by = zone_sante_notification
+     )
+
+top6_det_3w <- if (!is.null(intermediate_params$detection_backcalc)) {
+     intermediate_params$detection_backcalc |>
+          dplyr::filter(
+               zone_sante_notification %in% top6_hz_names,
+               threshold_time_key %in% last_3_weeks
+          ) |>
+          dplyr::summarise(
+               mean_det_rate = mean(detection_rate_adj, na.rm = TRUE),
+               estimated_true_cases = sum(estimated_true_cases, na.rm = TRUE),
+               .by = zone_sante_notification
+          )
+} else {
+     tibble::tibble(
+          zone_sante_notification = character(),
+          mean_det_rate = numeric(),
+          estimated_true_cases = numeric()
+     )
+}
+
+top6_3w_summary <- top6_3w_rows |>
+     dplyr::summarise(
+          Province = dplyr::first(Province),
+          tot_case_alerts = sum(case_alerts, na.rm = TRUE),
+          tot_death_alerts = sum(death_alerts, na.rm = TRUE),
+          tot_alerts = sum(total_alerts, na.rm = TRUE),
+          aai_w1 = aai[threshold_time_key == last_3_weeks[1]],
+          aai_w2 = aai[threshold_time_key == last_3_weeks[2]],
+          aai_w3 = aai[threshold_time_key == last_3_weeks[3]],
+          mean_aai = mean(aai, na.rm = TRUE),
+          mean_case_adeq = mean(case_adequacy, na.rm = TRUE),
+          mean_death_adeq = mean(death_adequacy, na.rm = TRUE),
+          .by = zone_sante_notification
+     ) |>
+     dplyr::left_join(top6_cases_3w, by = dplyr::join_by(zone_sante_notification)) |>
+     dplyr::left_join(top6_det_3w, by = dplyr::join_by(zone_sante_notification)) |>
+     dplyr::mutate(
+          perf_status = dplyr::case_when(
+               mean_aai >= 0.75 ~ "Adéquat (≥ 75%)",
+               mean_aai >= 0.50 ~ "Intermédiaire (≥ 50%)",
+               TRUE ~ "Sous-notification critique (< 50%)"
+          ),
+          badge_class = dplyr::case_when(
+               mean_aai >= 0.75 ~ "status-adequat",
+               mean_aai >= 0.50 ~ "status-sur",
+               TRUE ~ "status-sous"
+          )
+     ) |>
+     dplyr::arrange(dplyr::desc(mean_aai))
+
+# Groupes opérationnels Top 6
+top6_adequate_hz <- top6_3w_summary |>
+     dplyr::filter(mean_aai >= 0.75) |>
+     dplyr::pull(zone_sante_notification)
+
+top6_mid_hz <- top6_3w_summary |>
+     dplyr::filter(mean_aai >= 0.50 & mean_aai < 0.75) |>
+     dplyr::pull(zone_sante_notification)
+
+top6_low_hz <- top6_3w_summary |>
+     dplyr::filter(mean_aai < 0.50) |>
+     dplyr::pull(zone_sante_notification)
+
+# --- C. Vue d'ensemble sur toutes les zones de santé (57 zones) ---
+all_hz_3w <- trends_smooth_adeq |>
+     dplyr::filter(
+          zone_sante_notification != "Ensemble de la zone affectée",
+          threshold_time_key %in% last_3_weeks
+     ) |>
+     dplyr::summarise(
+          mean_aai = mean(aai, na.rm = TRUE),
+          tot_alerts = sum(total_alerts, na.rm = TRUE),
+          .by = zone_sante_notification
+     )
+
+all_hz_total_count <- nrow(all_hz_3w)
+all_hz_adequate_names <- all_hz_3w |>
+     dplyr::filter(mean_aai >= 0.75) |>
+     dplyr::pull(zone_sante_notification)
+all_hz_n_adequate <- length(all_hz_adequate_names)
+
+all_hz_mid_names <- all_hz_3w |>
+     dplyr::filter(mean_aai >= 0.50 & mean_aai < 0.75) |>
+     dplyr::pull(zone_sante_notification)
+all_hz_n_mid <- length(all_hz_mid_names)
+
+all_hz_n_low <- sum(all_hz_3w$mean_aai < 0.50, na.rm = TRUE)
+all_hz_n_silent <- sum(all_hz_3w$mean_aai < 0.10, na.rm = TRUE)
+
+# Part des alertes concentrées par les deux zones majeures
+top6_total_case_alerts_3w <- sum(top6_3w_summary$tot_case_alerts, na.rm = TRUE)
+top6_total_death_alerts_3w <- sum(top6_3w_summary$tot_death_alerts, na.rm = TRUE)
+top6_total_alerts_3w <- sum(top6_3w_summary$tot_alerts, na.rm = TRUE)
+
+high_volume_hz <- top6_3w_summary |>
+     dplyr::slice_max(tot_case_alerts, n = 2L, with_ties = FALSE) |>
+     dplyr::pull(zone_sante_notification)
+
+high_volume_case_alert_share <- sum(
+     top6_3w_summary$tot_case_alerts[top6_3w_summary$zone_sante_notification %in% high_volume_hz]
+) / top6_total_case_alerts_3w
+
+# Variables historiques pour compatibilité
+top6_total_case_alerts <- top6_total_case_alerts_3w
+top6_total_death_alerts <- top6_total_death_alerts_3w
+n_top6_under_alerting <- length(top6_low_hz) + length(top6_mid_hz)
+under_alerting_hz <- c(top6_low_hz, top6_mid_hz)
+```
+
+```{=html}
+<div class="report-header-banner">
+  <div class="report-header-top">
+    <div class="report-header-titles">
+      <h1>Rapport de surveillance et performance des alertes MVE</h1>
+      <p class="report-header-subtitle">
+        Évaluation longitudinale de l'adéquation des notifications d'alertes par rapport aux seuils épidémiologiques et démographiques
+      </p>
+    </div>
+    <div>
+      <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" class="btn-online-app" title="Ouvrir le tableau de bord interactif en ligne sur GitHub Pages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+        <span>Accéder à l'application en ligne</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; margin-left: 2px;">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
+    </div>
+  </div>
+  <p>
+    <strong>Auteur :</strong> `r author_header` &nbsp;|&nbsp; 
+    <strong>Date de publication :</strong> `r format(Sys.Date(), "%d %B %Y")` &nbsp;|&nbsp;
+    <strong>Source des données :</strong> DHIS2-Tracker (`r format(dhis2_source_date, "%d-%m-%Y")`) &nbsp;|&nbsp; 
+    <strong>Période couverte :</strong> du `r format(start_window_date, "%d/%m/%Y")` au `r format(end_window_date, "%d/%m/%Y")` (`r length(all_time_windows)` semaines d'analyse)<br>
+    <strong>Plateforme interactive (GitHub Pages) :</strong> <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" class="report-online-link">https://cai-cousp.github.io/BVD-Alert-performance/</a>
+  </p>
+</div>
+```
+
+---
+
+# 1. Objectif du rapport
+
+Ce rapport a pour objectif d'évaluer de manière quantitative la sensibilité, la réactivité et l'adéquation opérationnelle du système de notification des alertes de cas (personnes vivantes) et de décès communautaires dans les zones de santé affectées par la Maladie à Virus Ebola (MVE). En confrontant les volumes réels d'alertes validées à des seuils d'attente épidémiologiques et démographiques modélisés, cette analyse vise à :
+
+1. **Mesurer la sensibilité de la surveillance** : Déterminer si le nombre d'alertes captées est suffisant pour interrompre efficacement les chaînes de transmission actives.
+2. **Identifier précocement les zones sous-notificatrices** : Détecter les zones de santé en situation de silence épidémiologique ou de déficit critique d'alertes par rapport à leur charge de cas estimée.
+3. **Quantifier la taille réelle de l'épidémie** : Corriger les séries temporelles pour les délais de rapportage (nowcasting) et la sous-détection afin de fournir une estimation robuste du fardeau global et d'ajuster les ressources de riposte.
+
+---
+
+# 2. Questions adressées par le rapport
+
+Ce rapport répond aux questions opérationnelles et stratégiques suivantes :
+
+* **Adéquation du volume d'alertes** : Les notifications d'alertes de cas vivants et de décès communautaires atteignent-elles les niveaux minimaux requis pour garantir le contrôle épidémique au niveau global et dans chaque zone de santé ?
+* **Sensibilité de détection par type d'alerte** : Observe-t-on un déséquilibre entre la surveillance des cas vivants et la surveillance des décès dans la communauté ?
+* **Fardeau caché et dynamique de transmission** : Quelle est la taille réelle estimée de l'épidémie après ajustement pour la sous-détection et les délais de notification de laboratoire ?
+* **Priorisation géographique** : Quelles sont les zones de santé les plus critiques nécessitant un renforcement immédiat des équipes d'investigation, de recherche active et d'engagement communautaire ?
+
+---
+
+# 3. Méthode
+
+L'évaluation de la performance repose sur la modélisation hebdomadaire de seuils d'alertes attendues combinant trois approches complémentaires : l'**Approche A (Mortalité de base)** qui établit le plancher des décès attendus à partir du taux brut de mortalité national (8,3 pour 1 000 personnes-années) appliqué à la population de chaque zone ; l'**Approche B (Référence historique)** qui utilise les taux d'alertes de surveillance optimale issus de l'épidémie historique de Beni (EVD10) ; et l'**Approche C (Dynamique actuelle dérivée des cas)** qui intègre le nowcasting bayésien par modèle lognormal pour corriger la troncature des délais de notification récents, le taux de reproduction effectif $R_t$ (EpiEstim), les taux d'attaque secondaire (SAR), et des modèles log-linéaires de Poisson à décalage estimant les multiplicateurs d'alertes $\beta_c$ (cas vivants) et $\beta_d$ (décès) ajustés pour le taux de détection combiné (rétro-calcul du taux de létalité et liens épidémiologiques). La synthèse des approches produit des bornes de seuils consensuelles permettant de calculer l'**Indice d'Adéquation des Alertes ($AAI$)** et les ratios de performance par semaine d'analyse glissante non chevauchante de 7 jours.
+
+---
+
+# 4. Performances
+
+## 4.1 Niveau Global (Ensemble de la zone affectée)
+
+### Graphiques des tendances et de la performance globale
+
+::: {layout-ncol=2}
+```{r}
+#| label: fig-ensemble-trends
+#| fig-cap: "Tendances des alertes de cas vs. seuils attendus (Ensemble de la zone affectée)"
+#| fig-width: 6.5
+#| fig-height: 4.8
+plot_alert_trends(
+     data = trends_smooth_adeq,
+     hz = "Ensemble de la zone affectée",
+     metric = "case",
+     colour_by_adequacy = TRUE
+)
+```
+
+```{r}
+#| label: fig-ensemble-adequacy
+#| fig-cap: "Performance globale des alertes : ratios cas & décès (Ensemble de la zone affectée)"
+#| fig-width: 6.5
+#| fig-height: 4.8
+plot_adequacy_stacked(
+     data = trends_smooth_adeq,
+     hz = "Ensemble de la zone affectée"
+)
+```
+:::
+
+### Interprétation du graphique de performance
+
+Le graphique de performance des alertes (à droite) présente pour chaque semaine de notification (date de début de semaine) l'adéquation relative des alertes validées par rapport aux seuils minimaux attendus :
+
+* **Barres bleues (Performance des alertes vivants)** : Rapport entre les alertes de cas vivants validées et le seuil attendu ($\text{Alertes cas} / \text{Seuil cas}$). Une valeur $\ge 100\%$ indique que la détection active des cas vivants atteint le niveau modélisé.
+* **Barres rouges (Performance des alertes décès)** : Rapport entre les alertes de décès communautaires et le seuil de mortalité attendu ($\text{Alertes décès} / \text{Seuil décès}$). Une valeur $< 50\%$ traduit une faiblesse critique de la surveillance des décès dans la communauté.
+* **Barres violettes (Performance globale — AAI)** : Moyenne arithmétique des performances cas et décès.
+* **Ligne verte pointillée (Seuil de vigilance à 75 %)** : Objectif opérationnel minimal de complétude de surveillance.
+
+> [!NOTE]
+> **Règles de classification de la performance :**
+> * **Sous-notification ($AAI < 0.5$ ou $< 50\%$)** : Risque élevé de transmission non détectée ; la surveillance ne capte pas le volume minimal attendu d'alertes.
+> * **Adéquat ($0.5 \le AAI \le 2.0$)** : Volume d'alertes conforme à la dynamique épidémique et démographique.
+> * **Sur-notification ($AAI > 2.0$)** : Forte réactivité communautaire, nécessitant de veiller à la spécificité des alertes pour éviter la saturation des équipes d'intervention.
+
+---
+
+### Tableau des paramètres pour les 6 dernières semaines
+
+Le tableau ci-dessous présente les indicateurs de surveillance et les paramètres épidémiologiques du modèle pour l'ensemble de la zone affectée au cours des 6 dernières semaines :
+
+```{r}
+#| label: tbl-ensemble-last-6
+#| tbl-cap: "Paramètres épidémiologiques et performance des alertes — Ensemble de la zone affectée (6 dernières semaines)"
+display_ens_6 <- ensemble_6_combined |>
+     dplyr::mutate(
+          threshold_time_key = format(as.Date(threshold_time_key), "%d/%m/%Y"),
+          case_alerts = formatC(case_alerts, format = "d", big.mark = " "),
+          death_alerts = formatC(death_alerts, format = "d", big.mark = " "),
+          Alert_case_threshold = formatC(round(Alert_case_threshold, 0), format = "d", big.mark = " "),
+          Alert_death_threshold = formatC(round(Alert_death_threshold, 0), format = "d", big.mark = " "),
+          case_adequacy = paste0(round(case_adequacy * 100, 1), " %"),
+          death_adequacy = paste0(round(death_adequacy * 100, 1), " %"),
+          aai = round(aai, 2),
+          n_recent_confirmed = formatC(n_recent_confirmed, format = "d", big.mark = " "),
+          detection_rate_adj = paste0(round(detection_rate_adj * 100, 1), " %"),
+          estimated_true_cases_recent = formatC(round(estimated_true_cases_recent, 0), format = "d", big.mark = " ")
+     ) |>
+     dplyr::select(-total_alerts)
+
+kable(
+     display_ens_6,
+     format = "html",
+     escape = FALSE,
+     col.names = c(
+          "Semaine de notification (début)", "Alertes Cas", "Alertes Décès",
+          "Seuil Cas", "Seuil Décès", "Perf. Cas", "Perf. Décès", "AAI",
+          "Cas obs.", "Taux Détect.", "Cas vrais est."
+     ),
+     align = c("l", rep("r", 10))
+) |>
+     kable_styling(
+          bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+          font_size = 11,
+          full_width = TRUE
+     ) |>
+     column_spec(1, bold = TRUE) |>
+     column_spec(8, bold = TRUE, background = "#f1f5f9")
+```
+
+---
+
+### Synthèse des paramètres épidémiologiques globaux
+
+Sous l'ensemble des semaines analysées depuis le début de la riposte, les indicateurs cumulés de la zone affectée s'établissent comme suit :
+
+```{=html}
+<div class="kpi-container">
+  <div class="kpi-card">
+    <div class="kpi-value">`r formatC(global_total_confirmed, format = "d", big.mark = " ")`</div>
+    <div class="kpi-label">Cas confirmés rapportés</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">`r paste0(round(global_mean_det_rate * 100, 1), " %")`</div>
+    <div class="kpi-label">Taux de détection global moyen</div>
+    <div class="kpi-subtext">Moyenne sur toutes les semaines</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-value">`r formatC(round(global_epidemic_size, 0), format = "d", big.mark = " ")`</div>
+    <div class="kpi-label">Taille estimée de l'épidémie</div>
+    <div class="kpi-subtext">Somme des cas vrais estimés</div>
+  </div>
+</div>
+```
+
+> [!IMPORTANT]
+> **Synthèse d'exhaustivité :** Sur l'ensemble de l'épidémie, pour `r formatC(global_total_confirmed, format = "d", big.mark = " ")` cas confirmés notifiés, le modèle estime à **`r formatC(round(global_epidemic_size, 0), format = "d", big.mark = " ")` cas vrais** la taille cumulée de l'épidémie (soit environ `r round(under_reporting_ratio, 1)` cas réels pour chaque cas détecté). Le taux moyen de détection de **`r paste0(round(global_mean_det_rate * 100, 1), " %")`** démontre la nécessité de maintenir un niveau élevé d'alertes validées pour endiguer les chaînes de transmission résiduelles.
+
+---
+
+## 4.2 Niveau Zones de santé (Les 6 zones les plus affectées)
+
+### Graphique facetté de la performance des 6 zones les plus affectées
+
+```{r}
+#| label: fig-hz-faceted
+#| fig-cap: "Performance longitudinale des alertes dans les 6 zones de santé les plus affectées"
+#| fig-width: 11
+#| fig-height: 7
+plot_adequacy_stacked(
+     data = trends_smooth_adeq,
+     hz = top6_hz_names,
+     facet = TRUE,
+     ncol = 3,
+     date_breaks = 3
+)
+```
+
+---
+
+### Paramètres des 6 zones les plus affectées pour la dernière semaine
+
+Le tableau suivant détaille la situation épidémiologique et les paramètres de performance pour la dernière semaine (`r format(as.Date(last_window_key), "%d/%m/%Y")`) :
+
+```{r}
+#| label: tbl-hz-last-window
+#| tbl-cap: "Paramètres des alertes et du modèle — 6 zones les plus affectées (Dernière semaine)"
+display_hz_last <- hz_last_window_combined |>
+     dplyr::mutate(
+          zone_sante_notification = paste0(
+               zone_sante_notification, " (", dplyr::coalesce(Province, ""), ")"
+          ),
+          case_alerts = formatC(case_alerts, format = "d", big.mark = " "),
+          death_alerts = formatC(death_alerts, format = "d", big.mark = " "),
+          Alert_case_threshold = formatC(round(Alert_case_threshold, 0), format = "d", big.mark = " "),
+          Alert_death_threshold = formatC(round(Alert_death_threshold, 0), format = "d", big.mark = " "),
+          case_adequacy = paste0(round(case_adequacy * 100, 1), " %"),
+          death_adequacy = paste0(round(death_adequacy * 100, 1), " %"),
+          aai = round(aai, 2),
+          n_recent_confirmed = formatC(n_recent_confirmed, format = "d", big.mark = " "),
+          detection_rate_adj = paste0(round(detection_rate_adj * 100, 1), " %"),
+          estimated_true_cases_recent = formatC(round(estimated_true_cases_recent, 0), format = "d", big.mark = " ")
+     ) |>
+     dplyr::select(-Province, -total_alerts)
+
+kable(
+     display_hz_last,
+     format = "html",
+     escape = FALSE,
+     col.names = c(
+          "Zone de santé", "Alertes Cas", "Alertes Décès",
+          "Seuil Cas", "Seuil Décès", "Perf. Cas", "Perf. Décès", "AAI",
+          "Cas obs.", "Taux Détect.", "Cas vrais est."
+     ),
+     align = c("l", rep("r", 10))
+) |>
+     kable_styling(
+          bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+          font_size = 11,
+          full_width = TRUE
+     ) |>
+     column_spec(1, bold = TRUE) |>
+     column_spec(8, bold = TRUE, background = "#f1f5f9")
+```
+
+## 4.3 Cartographie de la performance de notification par zone de santé
+
+La carte suivante spatialise la classification de performance de notification
+des zones de santé sur la moyenne de l'indice d'adéquation des alertes (AAI)
+des trois dernières semaines analysées : **sous-notification** (AAI < 0,75),
+**notification adéquate** (AAI entre 0,75 et 2,00) et **surnotification**
+(AAI > 2,00). Les zones grisées correspondent aux zones sans données dans le
+périmètre d'analyse ou hors périmètre. La légende n'affiche que les catégories
+effectivement observées.
+
+```{r}
+#| label: fig-notification-performance-map
+#| fig-cap: "Performance de notification des alertes par zone de santé (moyenne AAI, 3 dernières semaines)"
+#| fig-width: 9
+#| fig-height: 10
+#| out-width: "100%"
+if (is.null(notification_map_path)) {
+     cat(
+          "Carte non disponible : exécuter `Rscript R/03b_alert_notification_performance_map.R` ",
+          "après `R/02_alert_trends.R` pour générer la carte de performance de notification."
+     )
+} else {
+     knitr::include_graphics(notification_map_path)
+}
+```
+
+```{r, results='asis'}
+if (!is.null(notification_map_categories)) {
+     cat(
+          "Répartition des zones cartographiées : ",
+          paste0(
+               notification_map_categories$Catégorie,
+               " (n = ",
+               notification_map_categories$n_zones,
+               ")",
+               collapse = " ; "
+          ),
+          ".",
+          sep = ""
+     )
+}
+```
+
+Cette lecture spatiale complète les analyses temporelles : elle identifie les
+zones en sous-notification critique où déployer en priorité la recherche active
+des cas et le réseau de notification communautaire (RECO).
+
+# Conclusion et recommandations
+
+## Synthèse des alertes et impact sur la trajectoire de l’épidémie
+
+> [!WARNING]
+> **Alerte épidémiologique opérationnelle (OMS / Commission Surveillance) :**
+> L'analyse consolidée des trois dernières semaines de surveillance (`r format(start_3w_date, "%d/%m/%Y")` au `r format(end_3w_date, "%d/%m/%Y")`) met en évidence un **décrochage critique de la sensibilité du système d'alerte**. Alors que la transmission communautaire demeure active dans plusieurs zones de santé, le volume global d'alertes s'est contracté de **`r scales::percent(abs(ens_change_alerts_w1_w3), accuracy = 1, decimal.mark = ",")`**, faisant chuter l'Indice d'Adéquation des Alertes ($AAI$) global à **`r paste0(round(ens_aai_w3 * 100, 1), " %")`** lors de la dernière semaine. **100 % des 6 zones de santé les plus affectées** se situent désormais en dessous du seuil opérationnel d'adéquation ($AAI < 75\%$). Cette défaillance de détection crée un angle mort majeur favorisant l'extension silencieuse des chaînes de transmission.
+
+### 1. Évaluation générale de la performance du système d'alerte
+
+Dans le dispositif de réponse à la Maladie à Virus Ebola (MVE), le système de notification et de validation des alertes constitue le premier rempart contre la propagation du virus. Pour garantir l'interruption des chaînes de transmission, il doit impérativement répondre à deux impératifs épidémiologiques fondamentaux :
+1. **Capter précocement les cas vivants symptomatiques** dès le premier contact communautaire afin de réduire à moins de 24 heures le délai entre l'apparition des symptômes et l'isolement en Centre de Traitement Ebola (CTE) ;
+2. **Intercepter et tester systématiquement 100 % des décès survenus dans la communauté** (par écouvillonnage buccal post-mortem) avant toute manipulation funéraire afin de prévenir les événements de super-propagation liés aux rites mortuaires traditionnels.
+
+Confronté aux seuils attendus issus de la modélisation consensuelle (combinant la mortalité démographique de base, les références historiques de surveillance optimale et la dynamique des cas récents ajustée pour la sous-détection), le système de surveillance enregistre une **sous-performance globale alarmante**. Sur l'ensemble du périmètre épidémique, l'Indice d'Adéquation des Alertes ($AAI$) moyen ne s'établit qu'à **`r paste0(round(ens_mean_aai_3w * 100, 1), " %")`** sur les trois dernières semaines : le système ne capte ainsi qu'à peine plus d'un quart des signaux épidémiologiques minimaux nécessaires pour assurer le contrôle de l'épidémie.
+
+Cette sous-notification générale masque en outre un déséquilibre opérationnel périlleux entre les deux composantes de la surveillance :
+* **Surveillance des cas vivants (personnes symptomatiques)** : L'adéquation moyenne s'établit à **`r paste0(round(ens_mean_case_adeq_3w * 100, 1), " %")`** sur les 3 dernières semaines (`r formatC(ens_tot_case_alerts_3w, format = "d", big.mark = " ")` alertes enregistrées). Ce niveau insuffisant témoignerait d'une recherche active des cas trop passive ?, souvent confinée aux structures de soins étatiques et moins orientée vers les structures privées informelles, les cabinets de tradipraticiens et les domiciles?
+* **Surveillance des décès communautaires** : L'adéquation moyenne n'atteint que **`r paste0(round(ens_mean_death_adeq_3w * 100, 1), " %")`** (`r formatC(ens_tot_death_alerts_3w, format = "d", big.mark = " ")` alertes de décès validées), avec une dégradation spectaculaire à **`r paste0(round(ens_3w_rows$death_adequacy[3] * 100, 1), " %")`** lors de la dernière semaine. Ce déficit structurel démontre qu'une immense majorité des décès survenus hors milieu hospitalier échappe à l'alerte, au prélèvement sécurisé et aux protocoles d'enterrements dignes et sécurisé (EDS).
+
+---
+
+### 2. Dynamique de la surveillance sur les 3 dernières semaines (du `r format(start_3w_date, "%d/%m/%Y")` au `r format(end_3w_date, "%d/%m/%Y")`)
+
+#### A. Évolution au niveau Global (« Ensemble de la zone affectée »)
+
+L'évaluation séquentielle sur les trois dernières semaines met en lumière une trajectoire d'érosion continue et préoccupante :
+
+* **Semaine 1 (`r w_labels[1]`)** : `r formatC(ens_3w_rows$total_alerts[1], format = "d", big.mark = " ")` alertes validées (`r formatC(ens_3w_rows$case_alerts[1], format = "d", big.mark = " ")` cas, `r formatC(ens_3w_rows$death_alerts[1], format = "d", big.mark = " ")` décès) pour un $AAI$ de **`r paste0(round(ens_aai_w1 * 100, 1), " %")`** (adéquation cas : `r paste0(round(ens_3w_rows$case_adequacy[1] * 100, 1), " %")`, décès : `r paste0(round(ens_3w_rows$death_adequacy[1] * 100, 1), " %")`) ;
+* **Semaine 2 (`r w_labels[2]`)** : `r formatC(ens_3w_rows$total_alerts[2], format = "d", big.mark = " ")` alertes validées (`r formatC(ens_3w_rows$case_alerts[2], format = "d", big.mark = " ")` cas, `r formatC(ens_3w_rows$death_alerts[2], format = "d", big.mark = " ")` décès) pour un $AAI$ de **`r paste0(round(ens_aai_w2 * 100, 1), " %")`** (adéquation cas : `r paste0(round(ens_3w_rows$case_adequacy[2] * 100, 1), " %")`, décès : `r paste0(round(ens_3w_rows$death_adequacy[2] * 100, 1), " %")`) ;
+* **Semaine 3 (`r w_labels[3]`)** : `r formatC(ens_3w_rows$total_alerts[3], format = "d", big.mark = " ")` alertes validées (`r formatC(ens_3w_rows$case_alerts[3], format = "d", big.mark = " ")` cas, `r formatC(ens_3w_rows$death_alerts[3], format = "d", big.mark = " ")` décès) pour un $AAI$ tombant à **`r paste0(round(ens_aai_w3 * 100, 1), " %")`** (adéquation cas : `r paste0(round(ens_3w_rows$case_adequacy[3] * 100, 1), " %")`, décès : `r paste0(round(ens_3w_rows$death_adequacy[3] * 100, 1), " %")`).
+
+En trois semaines, le volume global d'alertes s'est effondré de **`r scales::percent(abs(ens_change_alerts_w1_w3), accuracy = 1, decimal.mark = ",")`**, avec une baisse de **`r scales::percent(abs(ens_change_cases_w1_w3), accuracy = 1, decimal.mark = ",")`** des alertes de cas et de **`r scales::percent(abs(ens_change_deaths_w1_w3), accuracy = 1, decimal.mark = ",")`** des alertes de décès.
+
+> [!CAUTION]
+> **Le piège épidémiologique de la courbe brute des cas :**
+> Durant la même période, le nombre brut de cas confirmés rapportés est passé de 349 (semaine 1) à 314 (semaine 2), puis à 83 (semaine 3). Une lecture hâtive pourrait conclure à une extinction imminente de l'épidémie. **Cette interprétation est formellement réfutée par le modèle de nowcasting**, qui estime à **322 cas confirmés** la réalité épidémiologique de la dernière semaine après correction des retards de notification et de diagnostic (troncature à droite). La concomitance entre une circulation virale intense et une baisse vertigineuse des alertes constitue l'indicateur le plus limpide d'un **essoufflement sévère des équipes de terrain**, d'une réticence communautaire grandissante ou d'un relâchement opérationnel.
+
+#### B. Évolution dans les 6 zones de santé les plus affectées
+
+Les six zones prioritaires (`Bunia`, `Rwampara`, `Mongbwalu`, `Nizi`, `Katwa`, `Nia Nia`) concentrent la majorité du fardeau épidémique (`r formatC(top6_total_alerts_3w, format = "d", big.mark = " ")` alertes au total sur les 3 semaines, soit `r scales::percent(top6_total_alerts_3w / ens_tot_alerts_3w, accuracy = 1, decimal.mark = ",")` du volume régional). L'analyse hebdomadaire révèle des profils de dégradation contrastés :
+
+* **Bunia (Ituri)** : Zone de plus fort volume (`r formatC(top6_3w_summary$tot_alerts[top6_3w_summary$zone_sante_notification == "Bunia"], format = "d", big.mark = " ")` alertes). Son $AAI$ s'est détérioré de manière continue : de **66,1 %** (semaine 34) à **58,9 %** (semaine 35), puis **44,0 %** (semaine 36). Si la notification des décès s'est maintenue à un niveau acceptable (adéquation moyenne de 69,2 %), la détection des cas vivants s'est essoufflée (43,4 % en moyenne, tombant à 31,2 % en semaine 36), laissant échapper de nombreux contacts symptomatiques dans ce centre urbain à forte densité.
+* **Nizi (Ituri)** : Profil analogue à Bunia, avec un volume passant de 179 à 116 alertes et un $AAI$ chutant de **63,7 %** à **59,9 %**, puis à **44,7 %**. Nizi bascule ainsi sous la barre des 50 % en dernière semaine, avec une adéquation sur les cas vivants de seulement 35,5 %.
+* **Rwampara (Ituri)** : Zone affichant un volume d'alertes soutenu (`r formatC(top6_3w_summary$tot_alerts[top6_3w_summary$zone_sante_notification == "Rwampara"], format = "d", big.mark = " ")` alertes) et la seule trajectoire d'adéquation ascendante (**40,5 %** $\rightarrow$ **49,4 %** $\rightarrow$ **51,1 %**). Toutefois, cette performance repose quasi exclusivement sur les cas vivants (399 alertes), tandis que la surveillance des décès communautaires reste atone (seulement 68 alertes de décès sur 3 semaines, adéquation moyenne de 46,2 %), exposant la zone à des inhumations clandestines à la lisière des zones rurales.
+* **Mongbwalu (Ituri)** : Contexte minier hautement mobile où le volume d'alertes s'est contracté de 95 à 65 alertes. L'$AAI$ s'est écroulé de **55,7 %** à **41,0 %**, puis à **33,7 %** (avec une adéquation cas tombée à 30,5 % et décès à 37,0 %), créant un risque extrême de dissémination non traçable le long des campements d'orpaillage.
+* **Nia Nia (Ituri)** : Rupture brutale de la surveillance en dernière semaine. Alors que la zone affichait un $AAI$ de **57,4 %** en semaine 1 et de **40,0 %** en semaine 2, son $AAI$ s'est effondré à **17,9 %** en semaine 3. Cet effondrement découle de la disparition quasi-totale des alertes de décès communautaires : **1 seule alerte de décès** a été notifiée lors de la dernière semaine (adéquation de 3,2 %), signalant un arrêt de facto du réseau d'alerte communautaire.
+* **Katwa (Nord-Kivu)** : Situation la plus préoccupante sur le plan épidémiologique. Katwa présente l'$AAI$ moyen le plus bas du Top 6 (**31,2 %**), avec une régression dramatique de **47,4 %** à **26,9 %**, puis **19,5 %**. La détection des cas vivants y est en panne structurelle, avec une adéquation moyenne de 19,8 % qui s'est effondrée à **9,9 %** en semaine 3 (seulement 23 alertes de cas pour 13 cas confirmés rapportés et 54 cas attendus/nowcastés). Or, Katwa est la zone qui génère le plus grand nombre de cas vrais modélisés (estimés à **922 cas vrais** sur les 3 semaines en raison d'un faible taux de détection de 40,4 %).
+
+---
+
+### 3. Stratification et typologie opérationnelle des zones de santé
+
+Sur la base de la moyenne de l'Indice d'Adéquation des Alertes ($AAI$) calculée sur les 3 dernières semaines, l'ensemble des zones de santé du périmètre épidémique se répartit en trois catégories opérationnelles :
+
+* **Zones avec performance adéquate ($AAI \ge 75\%$ ou $\ge 0,75 - 2,00$)** :
+  * **Dans le Top 6 des zones prioritaires : Aucune zone de santé.** Aucune des 6 zones les plus touchées n'atteint l'objectif minimal de surveillance recommandé par l'OMS sur les 3 dernières semaines.
+  * **Sur l'ensemble des 57 zones cartographiées : Seules 2 zones** atteignent ce statut : **Tchomia** ($AAI = 134,0\%$) et **Nyankunde** ($AAI = 89,6\%$). Ces deux zones rurales bénéficient d'un engagement communautaire efficace et d'une recherche active rigoureuse des décès, mais ne représentent qu'une fraction marginale de la charge de morbidité active.
+
+* **Zones avec performance intermédiaire ($50\% \le AAI < 75\%$)** :
+  * **Dans le Top 6 : Seules Bunia ($56,3\%$) et Nizi ($56,1\%$)** se hissent au-dessus de la barre des 50 % en moyenne sur les 3 semaines.
+  * *Diagnostic épidémiologique :* Cette performance est qualifiée de **hautement précaire**. D'une part, elle est artificiellement tirée par la notification des décès ($~69\%$), tandis que la capture des cas vivants demeure déficiente ($~43\%$). D'autre part, **ces deux zones ont toutes deux fléchi sous le seuil des 50 % lors de la toute dernière semaine** (Bunia à $44,0\%$ et Nizi à $44,7\%$), signalant un risque imminent de basculement vers la sous-notification sévère.
+  * À l'échelle globale, seule la zone de **Mangala** ($59,5\%$) s'ajoute à ce groupe restreint.
+
+* **Zones avec les plus faibles performances (Sous-notification critique, $AAI < 50\%$)** :
+  * **Dans le Top 6 : 4 zones sur 6** se trouvent en situation de sous-notification critique :
+    * **Katwa** ($31,2\%$) : zone la plus défaillante pour la détection des cas vivants, constituant le principal réservoir de cas non détectés du Nord-Kivu ;
+    * **Nia Nia** ($38,5\%$) : zone la plus défaillante pour la surveillance des décès, caractérisée par une rupture de l'alerte communautaire ;
+    * **Mongbwalu** ($43,5\%$) et **Rwampara** ($47,0\%$).
+  * **À l'échelle globale : 52 zones de santé sur 57 (91,2 %)** présentent un $AAI < 50\%$. Parmi elles, **30 zones de santé se trouvent dans un état de silence épidémiologique complet ou quasi-complet ($AAI < 10\%$)**, incluant des carrefours urbains et commerciaux majeurs tels que Butembo ($AAI = 0\%$, 0 alerte), Beni ($13,7\%$), Oicha ($12,2\%$) ou Komanda ($35,0\%$). Ce silence ne reflète nullement une absence de transmission, mais l'incapacité du système à pénétrer les communautés.
+
+---
+
+### 4. Tableau synthétique de la performance des alertes sur les 3 dernières semaines
+
+Le tableau ci-dessous synthétise les volumes d'alertes validées, l'évolution hebdomadaire de l'AAI, le statut de performance et le fardeau épidémiologique pour l'Ensemble de la zone affectée et les 6 zones prioritaires :
+
+```{r}
+#| label: tbl-top6-3w-summary
+#| tbl-cap: "Synthèse comparative de la performance des alertes et du fardeau épidémiologique (3 dernières semaines)"
+ens_3w_summary_row <- tibble::tibble(
+     zone_sante_notification = "Ensemble de la zone affectée",
+     Province = "Toutes",
+     tot_case_alerts = ens_tot_case_alerts_3w,
+     tot_death_alerts = ens_tot_death_alerts_3w,
+     tot_alerts = ens_tot_alerts_3w,
+     aai_w1 = ens_aai_w1,
+     aai_w2 = ens_aai_w2,
+     aai_w3 = ens_aai_w3,
+     mean_aai = ens_mean_aai_3w,
+     n_confirmed = ens_tot_confirmed_3w,
+     n_nowcast = ens_tot_nowcast_3w,
+     badge = "<span class=\"status-badge status-sous\">Sous-notification</span>"
+)
+
+top6_3w_table_rows <- top6_3w_summary |>
+     dplyr::mutate(
+          badge = dplyr::case_when(
+               mean_aai >= 0.75 ~ "<span class=\"status-badge status-adequat\">Adéquat</span>",
+               mean_aai >= 0.50 ~ "<span class=\"status-badge status-sur\">Intermédiaire</span>",
+               TRUE ~ "<span class=\"status-badge status-sous\">Sous-notification</span>"
+          )
+     )
+
+tbl_combined_display <- dplyr::bind_rows(ens_3w_summary_row, top6_3w_table_rows) |>
+     dplyr::mutate(
+          Zone = dplyr::case_when(
+               Province == "Toutes" ~ "<strong>Ensemble de la zone affectée</strong>",
+               TRUE ~ paste0(zone_sante_notification, " (", Province, ")")
+          ),
+          tot_case_alerts = formatC(tot_case_alerts, format = "d", big.mark = " "),
+          tot_death_alerts = formatC(tot_death_alerts, format = "d", big.mark = " "),
+          tot_alerts = formatC(tot_alerts, format = "d", big.mark = " "),
+          aai_w1 = paste0(round(aai_w1 * 100, 1), " %"),
+          aai_w2 = paste0(round(aai_w2 * 100, 1), " %"),
+          aai_w3 = paste0(round(aai_w3 * 100, 1), " %"),
+          mean_aai = paste0(round(mean_aai * 100, 1), " %"),
+          cases_str = paste0(formatC(n_confirmed, format = "d", big.mark = " "), " / ", formatC(n_nowcast, format = "d", big.mark = " "))
+     ) |>
+     dplyr::select(Zone, tot_case_alerts, tot_death_alerts, tot_alerts, aai_w1, aai_w2, aai_w3, mean_aai, badge, cases_str)
+
+kable(
+     tbl_combined_display,
+     format = "html",
+     escape = FALSE,
+     col.names = c(
+          "Zone de santé", "Alertes Cas", "Alertes Décès", "Total Alertes",
+          paste0("AAI (", w_labels[1], ")"),
+          paste0("AAI (", w_labels[2], ")"),
+          paste0("AAI (", w_labels[3], ")"),
+          "AAI Moyen", "Statut de performance", "Cas obs. / Nowcast"
+     ),
+     align = c("l", rep("r", 7), "c", "r")
+) |>
+     kable_styling(
+          bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+          font_size = 11,
+          full_width = TRUE
+     ) |>
+     row_spec(1, bold = TRUE, background = "#f8fafc") |>
+     column_spec(1, bold = TRUE) |>
+     column_spec(8, bold = TRUE, background = "#f1f5f9")
+```
+
+---
+
+### 5. Contextualisation opérationnelle dans les piliers de contrôle de la MVE
+
+Du point de vue de l'épidémiologie de terrain, le niveau de performance du système d'alerte conditionne directement l'efficacité des interventions de contrôle :
+
+1. **Détection et isolement précoce des cas (< 24 heures)** :
+   * L'adéquation des alertes de cas vivants à seulement 26 % – 33 % au niveau global implique qu'une forte proportion de cas suspects d'Ebola déambule plusieurs jours dans la communauté avant d'être repérée.
+   * Ce retard thérapeutique prolonge la période de contagiosité non maîtrisée : le délai médian entre les premiers signes et l'admission au CTE s'élargit, multipliant le taux d'attaque secondaire ($SAR$) au sein des ménages et auprès des proches soignants.
+
+2. **Surveillance des décès communautaires et enterrements sécurisés (FSD)** :
+   * Le cadavre d'une personne décédée d'Ebola présente la charge virale la plus extrême. L'effondrement de l'adéquation des alertes de décès à 19,9 % signifie que **plus de 4 décès communautaires sur 5 sont actuellement inhumés sans alerte préalable, sans prélèvement de confirmation et sans sécurisation funéraire (EDS)**.
+   * Les pratiques traditionnelles de lavage mortuaire, de veillée funèbre et d'hommages physiques constituent le moteur historique des explosions épidémiques secondaires d'Ebola notamment en RDC.
+
+3. **Traçage des contacts et vaccination en ceinture (Ring Vaccination)** :
+   * Le traçage des contacts dépend intrinsèquement de l'exhaustivité des cas index identifiés via les alertes. Chaque alerte manquée génère un faisceau de 10 à 25 contacts non listés qui évolueront vers la maladie en dehors de tout suivi sanitaire.
+   * De surcroît, l'opportunité de déployer la vaccination préventive en ceinture (Ervebo) autour des cas confirmés dans l'intervalle critique des 48 à 72 heures post-exposition se trouve compromise.
+
+4. **Prévention et contrôle des infections (PCI) et risque nosocomial** :
+   * En l'absence de déclenchement rapide d'alertes à domicile, les patients symptomatiques recherchent des soins auprès des structures de santé périphériques (dispensaires privés, cliniques de quartier, postes de santé confessionnels ou tradipraticiens).
+   * Faute de triage rigoureux et d'équipements de protection individuelle (EPI) adéquats, ces structures deviennent des foyers d'amplification nosocomiale, contaminant les infirmiers, les médecins et les autres patients hospitalisés.
+
+---
+
+### 6. Conséquences directes sur la trajectoire de l’épidémie
+
+L'insuffisance prolongée de la sensibilité du système de surveillance des alertes engendre des conséquences majeures et prévisibles sur la dynamique épidémique :
+
+* **Multiplication des chaînes de transmission invisibles (cryptiques)** : L'écart massif entre les cas notifiés bruts et les cas vrais modélisés (plus de 1 000 cas réels cumulés sur les 3 dernières semaines) démontre que l'épidémie poursuit sa circulation « sous le radar » de la surveillance passive. Des chaînes non documentées s'étendent en silence, particulièrement à Katwa et Mongbwalu.
+* **Risque de flambées explosives en milieu hospitalier et funéraire** : Dès lors que les alertes de décès et de cas vivants chutent, le risque de résurgence foudroyante autour d'un décès communautaire non sécurisé ou d'un cas index hospitalisé sans précautions IPC croît de façon exponentielle.
+* **Faux sentiment d'accalmie et démobilisation prématurée** : La baisse faciale des cas bruts (liée à la troncature du nowcasting) combinée à la raréfaction apparente des alertes risque d'induire en erreur le commandement de la riposte. Une réaffectation prématurée des ressources humaines et logistiques vers d'autres priorités priverait les zones affectées de la réactivité indispensable pour étouffer les dernières braises.
+* **Dissémination géographique et réintroduction transfrontalière / interprovinciale** : La sous-notification dans les nœuds de communication et les zones minières (Mongbwalu, Nia Nia, corridors commerciaux de Katwa-Butembo) expose les provinces voisines (Tshopo, Haut-Uélé, Maniema) et les zones de santé limitrophes à des réintroductions inopinées, compromettant la stabilisation globale de l'épidémie.
+
+## Recommandations pour améliorer la notification des alertes
+
+Afin de combler les déficits de sensibilité observés et de maintenir un seuil optimal d'investigation, les actions prioritaires suivantes sont recommandées :
+
+1. **Renforcement ciblé dans les zones en sous-notification critique** :
+   * Déployer des équipes de recherche active des cas (RA) dans les aires de santé silencieuses des zones affichant un $AAI < 0.75$ (notamment pour la détection précoce des personnes symptomatiques).
+   * Intensifier la RA dans les structures de soins privées et traditionnelles, souvent premier point de contact des cas non rapportés.
+2. **Optimisation de la surveillance des décès communautaires** :
+   * Redynamiser le réseau des relais communautaires (RECO) et des chefs de village pour la notification systématique de tout décès survenu dans la communauté avant inhumation.
+   * Garantir la réalisation systématique et rapide des prélèvements buccaux (swabs) sur tous les décès communautaires notifiés.
+3. **Réduction des délais d'investigation et de transport des échantillons** :
+   * Accélérer le circuit d'acheminement des prélèvements vers les laboratoires de référence afin de réduire l'incertitude du nowcasting et fiabiliser les indicateurs en temps réel.
+4. **Recalibration continue des seuils d'alerte** :
+   * Réévaluer hebdomadairement les multiplicateurs $\beta_c$ et $\beta_d$ en tenant compte des évolutions de la définition de cas et des variations du nombre de contacts suivis par cas ($k$).
+
+---
+
+# 6. Limites des données
+
+Les résultats présentés dans ce rapport doivent être interprétés à la lumière des limites méthodologiques et opérationnelles suivantes :
+
+* **Troncature et délai de notification (Right-censoring)** : Les données des 7 à 14 derniers jours sont incomplètes en raison du délai naturel entre le début des symptômes, l'alerte, le prélèvement et le résultat de laboratoire. Bien que le nowcasting bayésien compense cette troncature, les estimations des semaines les plus récentes comportent une plus grande marge d'incertitude.
+* **Variabilité de la notification des décès communautaires** : Dans certaines zones isolées ou à faible accessibilité, la mortalité de base peut être sous-déclarée pour des raisons socioculturelles ou sécuritaires, affectant l'approche A.
+* **Hétérogénéité du traçage des contacts** : La qualité et l'exhaustivité de l'enregistrement des liens épidémiologiques varient selon les équipes de terrain, ce qui peut impacter localement les taux de détection par lien épidémiologique.
+* **Contraintes d'accès sécuritaire** : Les restrictions de mouvement imposées par le contexte sécuritaire dans certaines aires de santé d'Ituri et du Nord-Kivu peuvent engendrer des baisses artificielles du volume d'alertes sans diminution réelle de la transmission virale.
+
+---
+
+```{=html}
+<div style="text-align: center; color: #64748b; margin-top: 3rem; margin-bottom: 2rem; font-size: 0.85rem;">
+  <em>Rapport généré automatiquement par le système d'analyse et tableau de bord des alertes MVE / BVD.</em><br>
+  <strong>IOA-CAI &copy; `r report_year`</strong> &nbsp;|&nbsp; 
+  <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" style="color: #0d6efd; text-decoration: underline; font-weight: 500;">Accéder à la plateforme en ligne (GitHub Pages)</a>
+</div>
+```

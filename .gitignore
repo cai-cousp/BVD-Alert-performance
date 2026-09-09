@@ -46,6 +46,7 @@
 **/*_files/
 **/*.html
 !docs/**/*.html
+!ShinyApp/report_template.html
 
 # --- Tests (local only, never pushed) ---------------------------------------
 /test/

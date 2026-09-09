@@ -21,7 +21,7 @@ export_ui <- function(id) {
         downloadButton(
           ns("download_report"),
           label = tags$span(
-            bs_icon("file-earmark-pdf", class = "me-1"),
+            bs_icon("file-earmark-arrow-down", class = "me-1"),
             "Télécharger le rapport (HTML)"
           ),
           class = "btn btn-primary"
@@ -54,7 +54,7 @@ export_ui <- function(id) {
           tags$dl(
             tags$dt("Rapport HTML"),
             tags$dd(
-              "Génère un rapport HTML complet et autonome incluant les graphiques de tendances, ",
+              "Télécharge le rapport Quarto complet et autonome (report_template.html) incluant les graphiques interactifs, ",
               "les tableaux de seuils et l'évaluation de performance globale et par zone de santé."
             ),
             tags$dt("Export Excel"),
@@ -338,43 +338,17 @@ export_server <- function(id, filters) {
     # --- HTML report download -------------------------------------------------
     output$download_report <- downloadHandler(
       filename = function() {
-        paste0("BVD_Alert_Report_", Sys.Date(), ".html")
+        "report_template.html"
       },
       content = function(file) {
-        template_candidates <- c(
-          file.path(app_dir, "report_template.qmd"),
-          file.path(dirname(app_dir), "ShinyApp", "report_template.qmd"),
-          file.path(getwd(), "ShinyApp", "report_template.qmd"),
-          file.path(getwd(), "report_template.qmd")
-        )
-        template_path <- template_candidates[file.exists(template_candidates)][1]
+        target_dir <- if (exists("app_dir", inherits = TRUE)) app_dir else NULL
+        report_html <- find_report_template_html(target_dir)
 
-        if (is.na(template_path) || !file.exists(template_path)) {
-          # Fallback: generate a simple HTML summary
-          write_simple_html_report(file, filtered_trends_data(), filtered_synth_data(), filters)
+        if (!is.null(report_html) && file.exists(report_html)) {
+          file.copy(report_html, file, overwrite = TRUE)
         } else {
-          tryCatch({
-            quarto::quarto_render(
-              input = template_path,
-              output_format = "html",
-              execute_params = list(
-                project_root = dirname(app_dir),
-                date_start   = as.character(filters$date_range()[1]),
-                date_end     = as.character(filters$date_range()[2]),
-                selected_hzs = filters$selected_hzs(),
-                alert_level  = filters$alert_level()
-              )
-            )
-            rendered_html <- sub("\\.qmd$", ".html", template_path)
-            if (file.exists(rendered_html)) {
-              file.copy(rendered_html, file, overwrite = TRUE)
-            } else {
-              write_simple_html_report(file, filtered_trends_data(), filtered_synth_data(), filters)
-            }
-          }, error = function(e) {
-            warning("Quarto render error: ", conditionMessage(e))
-            write_simple_html_report(file, filtered_trends_data(), filtered_synth_data(), filters)
-          })
+          # Fallback: generate simple HTML summary if pre-rendered report is not found
+          write_simple_html_report(file, filtered_trends_data(), filtered_synth_data(), filters)
         }
       }
     )
@@ -431,6 +405,35 @@ export_server <- function(id, filters) {
       }
     )
   })
+}
+
+# --- Helper: locate pre-rendered report_template.html -------------------------
+find_report_template_html <- function(app_directory = NULL) {
+  if (is.null(app_directory)) {
+    if (exists("app_dir", envir = parent.frame())) {
+      app_directory <- get("app_dir", envir = parent.frame())
+    } else if (exists("app_dir", envir = .GlobalEnv)) {
+      app_directory <- get("app_dir", envir = .GlobalEnv)
+    }
+  }
+
+  candidates <- unique(c(
+    if (!is.null(app_directory)) file.path(app_directory, "report_template.html"),
+    if (!is.null(app_directory)) file.path(app_directory, "www", "report_template.html"),
+    if (!is.null(app_directory)) file.path(dirname(app_directory), "docs", "reports", "report_template.html"),
+    file.path(getwd(), "report_template.html"),
+    file.path(getwd(), "ShinyApp", "report_template.html"),
+    file.path(getwd(), "docs", "reports", "report_template.html"),
+    file.path(getwd(), "www", "report_template.html"),
+    file.path("..", "docs", "reports", "report_template.html"),
+    file.path("docs", "reports", "report_template.html")
+  ))
+
+  existing <- candidates[!is.na(candidates) & file.exists(candidates)]
+  if (length(existing) > 0L) {
+    return(normalizePath(existing[[1L]], mustWork = FALSE))
+  }
+  NULL
 }
 
 # --- Fallback simple HTML report generator -----------------------------------
