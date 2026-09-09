@@ -55,7 +55,19 @@ export_ui <- function(id) {
             tags$dt("Rapport HTML"),
             tags$dd(
               "Télécharge le rapport Quarto complet et autonome (report_template.html) incluant les graphiques interactifs, ",
-              "les tableaux de seuils et l'évaluation de performance globale et par zone de santé."
+              "les tableaux de seuils et l'évaluation de performance globale et par zone de santé. ",
+              tags$span(
+                class = "text-muted",
+                "(Disponible également en ",
+                tags$a(
+                  href = "report_template.html",
+                  download = "report_template.html",
+                  target = "_blank",
+                  class = "text-decoration-underline text-primary",
+                  "téléchargement direct alternatif"
+                ),
+                ")"
+              )
             ),
             tags$dt("Export Excel"),
             tags$dd(
