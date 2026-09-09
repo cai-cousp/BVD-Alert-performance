@@ -495,15 +495,12 @@ plot_alert_trends <- function(
   # --- Observed alerts line + points -----------------------------------
   # The line traces the overall trend in a single colour (black).
   # Points carry the adequacy-category colour so each week's status
-  # stands out individually.  Both layers inherit the optional `text`
-  # aesthetic for plotly tooltips when `for_plotly = TRUE`.
+  # stands out individually. Points carry the optional `text` aesthetic
+  # for plotly tooltips when `for_plotly = TRUE`.
   #
-  # Line aesthetic: y only, plus text if for_plotly
-  line_extra <- list()
-  if (for_plotly) {
-    line_extra$text <- rlang::quo(.data[["tooltip_text"]])
-  }
-  line_aes <- aes(y = !!y_sym, !!!line_extra)
+  # Line aesthetic: y only, grouped explicitly by health zone so discrete
+  # aesthetics do not fragment the line into single-observation groups.
+  line_aes <- aes(y = !!y_sym, group = zone_sante_notification)
 
   # Point aesthetic: y, plus colour if has_adequacy, plus text if for_plotly
   point_extra <- list()
@@ -528,7 +525,7 @@ plot_alert_trends <- function(
   # --- Optional 3-week rolling mean overlay ----------------------------
   if (has_rolling) {
     p <- p + geom_line(
-      aes(y = !!rl_sym),
+      aes(y = !!rl_sym, group = zone_sante_notification),
       colour = "firebrick", linetype = "dashed", linewidth = 0.6, na.rm = TRUE
     )
   }
@@ -947,22 +944,12 @@ build_plotly_alert_trends <- function(data, metric = c("case", "death"),
 
   # Per-HZ sub-plot builder
   one_hz_plot <- function(hz_name, df) {
-    # Base trace: black alerts line (the overall trend)
-    base <- plotly::plot_ly(
-      data = df,
-      x = ~date, y = as.formula(paste0("~", cols$y)),
-      type = "scatter", mode = "lines",
-      line = list(color = "black", width = 1.6),
-      name = cols$label,
-      showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
-    )
-
     # Threshold band as a filled polygon trace (transparent)
     band_df <- df |>
       dplyr::arrange(date) |>
       dplyr::select(date, dplyr::all_of(c(cols$lower, cols$upper, cols$avg_lower, cols$avg_upper))) |>
       tidyr::drop_na()
-    p <- base
+    p <- plotly::plot_ly()
 
     if (approach != "Average" && nrow(band_df) > 0L) {
       p <- plotly::add_ribbons(
@@ -1005,6 +992,19 @@ build_plotly_alert_trends <- function(data, metric = c("case", "death"),
         showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
       )
     }
+
+    # Base trace: black alerts line (the overall trend, drawn over threshold band)
+    p <- plotly::add_trace(
+      p,
+      data = df,
+      x = ~date,
+      y = as.formula(paste0("~", cols$y)),
+      type = "scatter",
+      mode = "lines",
+      line = list(color = "black", width = 1.6),
+      name = cols$label,
+      showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
+    )
 
     # Observed alerts line + markers
     if (has_adequacy) {
