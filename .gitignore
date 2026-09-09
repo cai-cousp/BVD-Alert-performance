@@ -48,8 +48,8 @@
 !docs/**/*.html
 
 # --- Tests (local only, never pushed) ---------------------------------------
-# /tests/
-/ShinyApp# /tests/
+/test/
+/tests/
 /R/test.R
 www
 
