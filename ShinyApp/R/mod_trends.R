@@ -536,8 +536,8 @@ trends_server <- function(id, filters = NULL) {
     output$title_ensemble_adeq <- renderText({
       switch(
         ensemble_alert_metric(),
-        "case"  = "Performance des alertes de cas (adéquation vivants)",
-        "death" = "Performance des alertes de décès (adéquation décès)",
+        "case"  = "Performance des alertes de cas & globale (AAI)",
+        "death" = "Performance des alertes de décès & globale (AAI)",
         "all"   = "Performance globale des alertes (adéquation cas & décès)"
       )
     })
@@ -627,8 +627,8 @@ trends_server <- function(id, filters = NULL) {
       hz <- selected_hz_value() %||% "Zone de santé"
       metric_label <- switch(
         hz_alert_metric(),
-        "case"  = "alertes de cas (adéquation vivants)",
-        "death" = "alertes de décès (adéquation décès)",
+        "case"  = "alertes de cas & globale (AAI)",
+        "death" = "alertes de décès & globale (AAI)",
         "all"   = "alertes"
       )
       paste0("Performance des ", metric_label, " : ", hz)

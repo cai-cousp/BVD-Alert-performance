@@ -29,7 +29,8 @@ test_that("ensemble trend title, adequacy title and death plot respond to the al
   testServer(trends_server, {
     # Default is case
     expect_match(output$title_ensemble_alert, "cas")
-    expect_match(output$title_ensemble_adeq, "vivants")
+    expect_match(output$title_ensemble_adeq, "cas")
+    expect_match(output$title_ensemble_adeq, "AAI")
     expect_false(is.null(output$ip_case_ensemble))
     expect_false(is.null(output$p_adeq_ensemble))
 
@@ -37,6 +38,7 @@ test_that("ensemble trend title, adequacy title and death plot respond to the al
     session$setInputs(ensemble_alert_metric = "death")
     expect_match(output$title_ensemble_alert, "décès")
     expect_match(output$title_ensemble_adeq, "décès")
+    expect_match(output$title_ensemble_adeq, "AAI")
     expect_false(is.null(output$ip_death_ensemble))
     expect_false(is.null(output$p_adeq_ensemble))
   })
@@ -49,7 +51,8 @@ test_that("health-zone trend title, adequacy title and death plot respond to the
   testServer(trends_server, {
     # Default is case
     expect_match(output$title_hz_alert, "cas")
-    expect_match(output$title_hz_adeq, "vivants")
+    expect_match(output$title_hz_adeq, "cas")
+    expect_match(output$title_hz_adeq, "AAI")
     expect_false(is.null(output$per_hz_case_interactive))
     expect_false(is.null(output$p_adeq_hz))
 
@@ -61,12 +64,13 @@ test_that("health-zone trend title, adequacy title and death plot respond to the
 
     expect_match(output$title_hz_alert, "décès")
     expect_match(output$title_hz_adeq, "décès")
+    expect_match(output$title_hz_adeq, "AAI")
     expect_false(is.null(output$per_hz_death_interactive))
     expect_false(is.null(output$p_adeq_hz))
   })
 })
 
-test_that("plot_adequacy_stacked filters metrics correctly", {
+test_that("plot_adequacy_stacked always includes AAI for case, death and all", {
   skip_if(!exists("trends_smooth_adeq"), message = "trends_smooth_adeq not loaded")
   skip_if(!exists("plot_adequacy_stacked"), message = "plot_adequacy_stacked not loaded")
 
@@ -77,7 +81,11 @@ test_that("plot_adequacy_stacked filters metrics correctly", {
   )
   expect_s3_class(p_case, "ggplot")
   expect_match(p_case$labels$title, "cas")
-  expect_true(all(p_case$data$metric_label == "Performance des alertes vivants"))
+  expect_match(p_case$labels$title, "AAI")
+  expect_setequal(
+    levels(droplevels(p_case$data$metric_label)),
+    c("Performance des alertes vivants", "Performance globale")
+  )
 
   p_death <- plot_adequacy_stacked(
     data = trends_smooth_adeq,
@@ -86,7 +94,11 @@ test_that("plot_adequacy_stacked filters metrics correctly", {
   )
   expect_s3_class(p_death, "ggplot")
   expect_match(p_death$labels$title, "décès")
-  expect_true(all(p_death$data$metric_label == "Performance des alertes décès"))
+  expect_match(p_death$labels$title, "AAI")
+  expect_setequal(
+    levels(droplevels(p_death$data$metric_label)),
+    c("Performance des alertes décès", "Performance globale")
+  )
 
   p_all <- plot_adequacy_stacked(
     data = trends_smooth_adeq,
@@ -100,7 +112,7 @@ test_that("plot_adequacy_stacked filters metrics correctly", {
   )
 })
 
-test_that("plot_adequacy_stacked_interactive supports metric argument", {
+test_that("plot_adequacy_stacked_interactive supports metric argument with AAI", {
   skip_if(!exists("trends_smooth_adeq"), message = "trends_smooth_adeq not loaded")
   skip_if(!exists("plot_adequacy_stacked_interactive"), message = "plot_adequacy_stacked_interactive not loaded")
 

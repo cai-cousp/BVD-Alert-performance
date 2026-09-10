@@ -1417,8 +1417,8 @@ plot_adequacy_stacked <- function(
 
   metric_cols <- switch(
     metric,
-    "case"  = "case_adequacy",
-    "death" = "death_adequacy",
+    "case"  = c("case_adequacy", "aai"),
+    "death" = c("death_adequacy", "aai"),
     "all"   = c("case_adequacy", "death_adequacy", "aai", "adequacy_cmr")
   )
 
@@ -1481,15 +1481,21 @@ plot_adequacy_stacked <- function(
   # --- Labels / theme / scales -------------------------------------------
   title_text <- switch(
     metric,
-    "case"  = "Performance des alertes de cas (adéquation vivants)",
-    "death" = "Performance des alertes de décès (adéquation décès)",
+    "case"  = "Performance des alertes de cas & globale (AAI)",
+    "death" = "Performance des alertes de décès & globale (AAI)",
     "all"   = "Performance des alertes : ratios cas & décès"
   )
 
   subtitle_text <- switch(
     metric,
-    "case"  = "Performance des alertes vivants = alertes_cas / seuil_cas\n",
-    "death" = "Performance des alertes décès = alertes_décès / seuil_décès\n",
+    "case"  = paste0(
+      "Performance des alertes vivants = alertes_cas / seuil_cas\n",
+      "Performance globale = (performance vivants + performance décès) / 2\n"
+    ),
+    "death" = paste0(
+      "Performance des alertes décès = alertes_décès / seuil_décès\n",
+      "Performance globale = (performance vivants + performance décès) / 2\n"
+    ),
     "all"   = paste0(
       "Performance of live alerts = case_alerts / case_alert_threshold\n",
       "Performance of death alerts = death_alerts / death_alert_threshold\n",
@@ -1720,7 +1726,7 @@ plot_adequacy_stacked_interactive <- function(...,
         "\nSemaine de notification (début) : ", format(date, "%d/%m/%Y"),
         if (metric %in% c("all", "case")) paste0("\nPerformance alertes vivants : ", ifelse(is.na(case_adequacy), "N/A", paste0(round(case_adequacy * 100, 0), "%"))) else "",
         if (metric %in% c("all", "death")) paste0("\nPerformance alertes décès : ", ifelse(is.na(death_adequacy), "N/A", paste0(round(death_adequacy * 100, 0), "%"))) else "",
-        if (metric == "all" && has_aai) paste0("\nPerformance globale : ", ifelse(is.na(aai), "N/A", paste0(round(aai * 100, 0), "%"))) else ""
+        if (has_aai) paste0("\nPerformance globale : ", ifelse(is.na(aai), "N/A", paste0(round(aai * 100, 0), "%"))) else ""
       )
     ) |>
     dplyr::arrange(zone_sante_notification, date)
@@ -1756,7 +1762,7 @@ plot_adequacy_stacked_interactive <- function(...,
         )
     }
 
-    if (metric == "all" && has_aai) {
+    if (has_aai) {
       p <- p |>
         plotly::add_bars(
           data = df, x = ~date, y = ~aai,
@@ -1815,7 +1821,7 @@ plot_adequacy_stacked_interactive <- function(...,
     if (metric %in% c("all", "death") && "death_adequacy" %in% names(df)) {
       all_adeq_vals <- c(all_adeq_vals, df$death_adequacy)
     }
-    if (metric == "all" && has_aai && "aai" %in% names(df)) {
+    if (has_aai && "aai" %in% names(df)) {
       all_adeq_vals <- c(all_adeq_vals, df$aai)
     }
     valid_adeq_df <- all_adeq_vals[!is.na(all_adeq_vals)]
@@ -1842,8 +1848,8 @@ plot_adequacy_stacked_interactive <- function(...,
 
     chart_title <- switch(
       metric,
-      "case"  = "Performance des alertes de cas",
-      "death" = "Performance des alertes de décès",
+      "case"  = "Performance des alertes de cas & globale (AAI)",
+      "death" = "Performance des alertes de décès & globale (AAI)",
       "all"   = "Performance des alertes : ratios cas & décès"
     )
 
