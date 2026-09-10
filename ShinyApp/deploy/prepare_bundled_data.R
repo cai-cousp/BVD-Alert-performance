@@ -249,7 +249,10 @@ writeLines(json_manifest, file.path(data_dest, "manifest.json"))
 message("Manifest generated: total bundled payload is ", total_kb, " KB (< ", round(total_kb / 1024, 2), " MB).")
 
 # --- Synchronize report_template.html -----------------------------------------
-report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
+report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
+if (!file.exists(report_src)) {
+  report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
+}
 if (file.exists(report_src)) {
   file.copy(report_src, file.path(app_dir, "report_template.html"), overwrite = TRUE)
   message("Synchronized report_template.html to ShinyApp/ (", round(file.size(report_src) / (1024 * 1024), 2), " MB).")

@@ -22,10 +22,9 @@ message("Notification map inputs: ", map_inputs$output_dir)
 adequacy_raw <- readxl::read_excel(map_inputs$adequacy_path)
 trends_raw <- readRDS(map_inputs$trends_path)
 
-unique(adequacy_raw$adequacy_category)
-adequacy_raw |> arrange(desc(mean_aai)) |> View()
+# unique(adequacy_raw$adequacy_category)
+# adequacy_raw |> arrange(desc(mean_aai)) |> View()
 
-adequacy_raw 
 
 reference_date <- notification_map_reference_date(trends_raw, map_inputs$output_dir)
 evd_file_date <- attr(trends_raw, "evd_file_date")

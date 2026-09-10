@@ -104,7 +104,10 @@ if (!dir.exists(dest_path)) {
 }
 
 # Ensure report_template.html is synchronized into ShinyApp/ before Shinylive export
-report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
+report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
+if (!file.exists(report_src)) {
+  report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
+}
 report_dest_app <- file.path(app_dir, "report_template.html")
 if (file.exists(report_src)) {
   if (!file.exists(report_dest_app) || file.info(report_src)$mtime > file.info(report_dest_app)$mtime) {

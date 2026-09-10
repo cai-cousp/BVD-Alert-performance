@@ -62,6 +62,59 @@ params:
     margin: 0;
     font-size: 0.95rem;
     opacity: 0.9;
+    line-height: 1.6;
+  }
+  .report-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .report-header-titles {
+    flex: 1 1 550px;
+  }
+  .btn-online-app {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.6);
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none !important;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .btn-online-app:hover {
+    background: #ffffff;
+    color: #0d6efd !important;
+    border-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transform: translateY(-1px);
+  }
+  .btn-online-app svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  .report-online-link {
+    color: #bae6fd !important;
+    text-decoration: underline !important;
+    font-weight: 600;
+    word-break: break-all;
+    transition: color 0.15s ease;
+  }
+  .report-online-link:hover {
+    color: #ffffff !important;
   }
   .kpi-container {
     display: grid;
@@ -117,13 +170,13 @@ params:
     text-align: center;
   }
   .status-sous {
-    background-color: #dc2626 !important;
+    background-color: #D55E00 !important;
   }
   .status-adequat {
-    background-color: #16a34a !important;
+    background-color: #009E73 !important;
   }
   .status-sur {
-    background-color: #d97706 !important;
+    background-color: #CC79A7 !important;
   }
 
   /* ----------------------------------------------------------------------- */
@@ -235,7 +288,8 @@ params:
   }
 
   @media print {
-    .export-action-bar {
+    .export-action-bar,
+    .btn-online-app {
       display: none !important;
     }
   }
@@ -625,37 +679,69 @@ if (length(valid_dirs) == 0) {
 latest_dir <- if (length(valid_dirs) > 0) sort(valid_dirs, decreasing = TRUE)[[1]] else output_base
 
 # Carte de performance de notification (générée par R/03b_alert_notification_performance_map.R)
-notification_map_files <- sort(
-     list.files(
-          latest_dir,
-          pattern = "^03b_alert_notification_performance_map(_.*)?\\.png$",
-          full.names = TRUE
-     ),
-     decreasing = TRUE
-)
-notification_map_path <- if (length(notification_map_files) > 0) notification_map_files[[1]] else NULL
-notification_map_audit_path <- file.path(
+# 1. Recherche du fichier PNG dans latest_dir, puis repli automatique sur les répertoires de sortie valides
+notification_map_files <- list.files(
      latest_dir,
-     "03b_alert_notification_performance_map_audit.xlsx"
+     pattern = "^03b_alert_notification_performance_map(_.*)?\\.png$",
+     full.names = TRUE
 )
-notification_map_summary <- tryCatch(
-     {
-          if (!is.null(notification_map_path) && file.exists(notification_map_audit_path)) {
-               readxl::read_excel(notification_map_audit_path, sheet = "Résumé")
-          } else {
-               NULL
+notification_map_dir <- latest_dir
+
+if (length(notification_map_files) == 0 && exists("output_dirs") && length(output_dirs) > 0) {
+     for (d in sort(output_dirs, decreasing = TRUE)) {
+          cands <- list.files(d, pattern = "^03b_alert_notification_performance_map(_.*)?\\.png$", full.names = TRUE)
+          if (length(cands) > 0) {
+               notification_map_files <- cands
+               notification_map_dir <- d
+               break
           }
-     },
-     error = function(e) NULL
-)
+     }
+}
+
+# Préférer le fichier générique s'il existe, sinon le plus récent
+notification_map_path <- if (length(notification_map_files) > 0) {
+     generic_file <- notification_map_files[grepl("^03b_alert_notification_performance_map\\.png$", basename(notification_map_files))]
+     if (length(generic_file) > 0) generic_file[[1]] else sort(notification_map_files, decreasing = TRUE)[[1]]
+} else {
+     NULL
+}
+
+# Recherche du PDF vectoriel haute définition correspondant
+notification_map_pdf_files <- if (!is.null(notification_map_dir)) {
+     list.files(notification_map_dir, pattern = "^03b_alert_notification_performance_map(_.*)?\\.pdf$", full.names = TRUE)
+} else {
+     character(0)
+}
+notification_map_pdf_path <- if (length(notification_map_pdf_files) > 0) {
+     generic_pdf <- notification_map_pdf_files[grepl("^03b_alert_notification_performance_map\\.pdf$", basename(notification_map_pdf_files))]
+     if (length(generic_pdf) > 0) generic_pdf[[1]] else sort(notification_map_pdf_files, decreasing = TRUE)[[1]]
+} else {
+     NULL
+}
+
+# Données d'audit et répartition des zones
+notification_map_audit_path <- file.path(notification_map_dir, "03b_alert_notification_performance_map_audit.xlsx")
+notification_map_data_path <- file.path(notification_map_dir, "03b_alert_notification_performance_map_data.rds")
+
+# Répartition par catégorie : lecture depuis l'Excel d'audit ou fallback direct sur le data.rds
 notification_map_categories <- tryCatch(
      {
-          if (!is.null(notification_map_summary)) {
-               mapped <- readxl::read_excel(
-                    notification_map_audit_path,
-                    sheet = "Zones cartographiées"
-               )
+          if (file.exists(notification_map_audit_path)) {
+               mapped <- readxl::read_excel(notification_map_audit_path, sheet = "Zones cartographiées")
                mapped |>
+                    dplyr::count(.data$Catégorie, name = "n_zones") |>
+                    dplyr::arrange(dplyr::desc(.data$n_zones))
+          } else if (file.exists(notification_map_data_path)) {
+               sf_data <- readRDS(notification_map_data_path)
+               if (inherits(sf_data, "sf")) sf_data <- sf::st_drop_geometry(sf_data)
+               cat_labels <- c(
+                    "Under-alerting" = "Sous-notification",
+                    "Adequate" = "Notification adéquate",
+                    "Over-alerting" = "Surnotification"
+               )
+               sf_data |>
+                    dplyr::filter(!is.na(.data$adequacy_category_recomputed)) |>
+                    dplyr::mutate(Catégorie = unname(cat_labels[as.character(.data$adequacy_category_recomputed)])) |>
                     dplyr::count(.data$Catégorie, name = "n_zones") |>
                     dplyr::arrange(dplyr::desc(.data$n_zones))
           } else {
@@ -664,6 +750,40 @@ notification_map_categories <- tryCatch(
      },
      error = function(e) NULL
 )
+
+# Tableau détaillé des zones cartographiées (pour affichage de synthèse sous la carte)
+notification_map_zones_df <- tryCatch(
+     {
+          if (file.exists(notification_map_audit_path)) {
+               readxl::read_excel(notification_map_audit_path, sheet = "Zones cartographiées")
+          } else if (file.exists(notification_map_data_path)) {
+               sf_data <- readRDS(notification_map_data_path)
+               if (inherits(sf_data, "sf")) sf_data <- sf::st_drop_geometry(sf_data)
+               cat_labels <- c(
+                    "Under-alerting" = "Sous-notification",
+                    "Adequate" = "Notification adéquate",
+                    "Over-alerting" = "Surnotification"
+               )
+               sf_data |>
+                    dplyr::filter(!is.na(.data$adequacy_category_recomputed)) |>
+                    dplyr::transmute(
+                         `Province (GRID3)` = .data$province,
+                         `Zone de santé (GRID3)` = .data$zonesante,
+                         `Zone notifiée (source)` = .data$zone_sante_notification,
+                         `AAI moyen` = .data$mean_aai,
+                         `Catégorie` = unname(cat_labels[as.character(.data$adequacy_category_recomputed)]),
+                         `Délai moyen (jours)` = .data$mean_delay_days,
+                         `Tendance` = .data$trend_direction,
+                         `Performance (volume + délai)` = .data$performance_category
+                    ) |>
+                    dplyr::arrange(.data$Catégorie, dplyr::desc(.data$`AAI moyen`))
+          } else {
+               NULL
+          }
+     },
+     error = function(e) NULL
+)
+
 
 # Chargement de la synthèse et des séries chronologiques
 synthesis_files <- sort(
@@ -1078,22 +1198,42 @@ under_alerting_hz <- c(top6_low_hz, top6_mid_hz)
 
 ```{=html}
 <div class="report-header-banner">
-  <h1>Rapport de surveillance et performance des alertes MVE</h1>
-  <p class="report-header-subtitle">
-    Évaluation longitudinale de l'adéquation des notifications d'alertes par rapport aux seuils épidémiologiques et démographiques
-  </p>
+  <div class="report-header-top">
+    <div class="report-header-titles">
+      <h1>Rapport de surveillance et performance des alertes MVE</h1>
+      <p class="report-header-subtitle">
+        Évaluation longitudinale de l'adéquation des notifications d'alertes par rapport aux seuils épidémiologiques et démographiques
+      </p>
+    </div>
+    <div>
+      <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" class="btn-online-app" title="Ouvrir le tableau de bord interactif en ligne sur GitHub Pages">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="2" y1="12" x2="22" y2="12"></line>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+        <span>Accéder à l'application en ligne</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 13px; height: 13px; margin-left: 2px;">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </a>
+    </div>
+  </div>
   <p>
     <strong>Auteur :</strong> `r author_header` &nbsp;|&nbsp; 
     <strong>Date de publication :</strong> `r format(Sys.Date(), "%d %B %Y")` &nbsp;|&nbsp;
     <strong>Source des données :</strong> DHIS2-Tracker (`r format(dhis2_source_date, "%d-%m-%Y")`) &nbsp;|&nbsp; 
-    <strong>Période couverte :</strong> du `r format(start_window_date, "%d/%m/%Y")` au `r format(end_window_date, "%d/%m/%Y")` (`r length(all_time_windows)` semaines d'analyse)
+    <strong>Période couverte :</strong> du `r format(start_window_date, "%d/%m/%Y")` au `r format(end_window_date, "%d/%m/%Y")` (`r length(all_time_windows)` semaines d'analyse)<br>
+    <strong>Plateforme interactive (GitHub Pages) :</strong> <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" class="report-online-link">https://cai-cousp.github.io/BVD-Alert-performance/</a>
   </p>
 </div>
 ```
 
 ---
 
-# 1. Objectif du rapport
+# Objectif du rapport {#objectif-du-rapport}
 
 Ce rapport a pour objectif d'évaluer de manière quantitative la sensibilité, la réactivité et l'adéquation opérationnelle du système de notification des alertes de cas (personnes vivantes) et de décès communautaires dans les zones de santé affectées par la Maladie à Virus Ebola (MVE). En confrontant les volumes réels d'alertes validées à des seuils d'attente épidémiologiques et démographiques modélisés, cette analyse vise à :
 
@@ -1103,7 +1243,7 @@ Ce rapport a pour objectif d'évaluer de manière quantitative la sensibilité, 
 
 ---
 
-# 2. Questions adressées par le rapport
+# Questions adressées par le rapport {#questions-adressees-par-le-rapport}
 
 Ce rapport répond aux questions opérationnelles et stratégiques suivantes :
 
@@ -1114,15 +1254,16 @@ Ce rapport répond aux questions opérationnelles et stratégiques suivantes :
 
 ---
 
-# 3. Méthode
+# Méthode {#methode}
 
 L'évaluation de la performance repose sur la modélisation hebdomadaire de seuils d'alertes attendues combinant trois approches complémentaires : l'**Approche A (Mortalité de base)** qui établit le plancher des décès attendus à partir du taux brut de mortalité national (8,3 pour 1 000 personnes-années) appliqué à la population de chaque zone ; l'**Approche B (Référence historique)** qui utilise les taux d'alertes de surveillance optimale issus de l'épidémie historique de Beni (EVD10) ; et l'**Approche C (Dynamique actuelle dérivée des cas)** qui intègre le nowcasting bayésien par modèle lognormal pour corriger la troncature des délais de notification récents, le taux de reproduction effectif $R_t$ (EpiEstim), les taux d'attaque secondaire (SAR), et des modèles log-linéaires de Poisson à décalage estimant les multiplicateurs d'alertes $\beta_c$ (cas vivants) et $\beta_d$ (décès) ajustés pour le taux de détection combiné (rétro-calcul du taux de létalité et liens épidémiologiques). La synthèse des approches produit des bornes de seuils consensuelles permettant de calculer l'**Indice d'Adéquation des Alertes ($AAI$)** et les ratios de performance par semaine d'analyse glissante non chevauchante de 7 jours.
 
 ---
 
-# 4. Performances
+# Performances {#performances}
 
-## 4.1 Niveau Global (Ensemble de la zone affectée)
+## Niveau Global (Ensemble de la zone affectée) {#niveau-global}
+
 
 ### Graphiques des tendances et de la performance globale
 
@@ -1242,7 +1383,7 @@ Sous l'ensemble des semaines analysées depuis le début de la riposte, les indi
 
 ---
 
-## 4.2 Niveau Zones de santé (Les 6 zones les plus affectées)
+## Niveau Zones de santé (Les 6 zones les plus affectées) {#niveau-zones-de-sante}
 
 ### Graphique facetté de la performance des 6 zones les plus affectées
 
@@ -1307,15 +1448,55 @@ kable(
      column_spec(8, bold = TRUE, background = "#f1f5f9")
 ```
 
-## 4.3 Cartographie de la performance de notification par zone de santé
+## Cartographie de la performance de notification par zone de santé {#cartographie-de-la-performance-de-notification-par-zone-de-sante}
 
-La carte suivante spatialise la classification de performance de notification
-des zones de santé sur la moyenne de l'indice d'adéquation des alertes (AAI)
-des trois dernières semaines analysées : **sous-notification** (AAI < 0,75),
-**notification adéquate** (AAI entre 0,75 et 2,00) et **surnotification**
-(AAI > 2,00). Les zones grisées correspondent aux zones sans données dans le
-périmètre d'analyse ou hors périmètre. La légende n'affiche que les catégories
-effectivement observées.
+La carte suivante spatialise la classification de la performance de notification des zones de santé calculée sur la moyenne de l'indice d'adéquation des alertes ($AAI$) des trois dernières semaines d'analyse (`r format(start_3w_date, "%d/%m/%Y")` au `r format(end_3w_date, "%d/%m/%Y")`).
+
+Cette lecture cartographique permet de situer géographiquement le niveau de vigilance et d'orienter les priorités opérationnelles :
+
+* <span class="status-badge status-sous">Sous-notification</span> : $AAI < 0,75$ (Surveillance insuffisante, risque élevé d'extension silencieuse des chaînes de transmission).
+* <span class="status-badge status-adequat">Notification adéquate</span> : $0,75 \le AAI \le 2,00$ (Sensibilité et réactivité conformes aux attentes épidémiologiques).
+* <span class="status-badge status-sur">Surnotification</span> : $AAI > 2,00$ (Volume d'alertes supérieur aux attentes, nécessitant un tri rigoureux pour préserver la réactivité).
+
+Les zones grisées correspondent aux zones sans données dans le périmètre d'analyse ou hors périmètre. La légende n'affiche que les catégories effectivement observées sur le terrain.
+
+::: {layout-ncol=3}
+::: {.kpi-card style="border-left-color: #D55E00;"}
+::: {.kpi-value style="color: #D55E00;"}
+`r if (!is.null(notification_map_categories) && any(grepl("Sous-notif", notification_map_categories$Catégorie, ignore.case = TRUE))) notification_map_categories$n_zones[grepl("Sous-notif", notification_map_categories$Catégorie, ignore.case = TRUE)][[1]] else 0`
+:::
+::: {.kpi-label}
+Zones en sous-notification
+:::
+::: {.kpi-subtext}
+AAI moyen < 0,75 (Priorité recherche active)
+:::
+:::
+
+::: {.kpi-card style="border-left-color: #009E73;"}
+::: {.kpi-value style="color: #009E73;"}
+`r if (!is.null(notification_map_categories) && any(grepl("adéquat", notification_map_categories$Catégorie, ignore.case = TRUE))) notification_map_categories$n_zones[grepl("adéquat", notification_map_categories$Catégorie, ignore.case = TRUE)][[1]] else 0`
+:::
+::: {.kpi-label}
+Zones adéquates
+:::
+::: {.kpi-subtext}
+0,75 ≤ AAI moyen ≤ 2,00 (Volume attendu)
+:::
+:::
+
+::: {.kpi-card style="border-left-color: #CC79A7;"}
+::: {.kpi-value style="color: #CC79A7;"}
+`r if (!is.null(notification_map_categories) && any(grepl("Sur-notif", notification_map_categories$Catégorie, ignore.case = TRUE))) notification_map_categories$n_zones[grepl("Sur-notif", notification_map_categories$Catégorie, ignore.case = TRUE)][[1]] else 0`
+:::
+::: {.kpi-label}
+Zones en surnotification
+:::
+::: {.kpi-subtext}
+AAI moyen > 2,00 (Tri et validation requis)
+:::
+:::
+:::
 
 ```{r}
 #| label: fig-notification-performance-map
@@ -1323,36 +1504,70 @@ effectivement observées.
 #| fig-width: 9
 #| fig-height: 10
 #| out-width: "100%"
-if (is.null(notification_map_path)) {
+if (is.null(notification_map_path) || !file.exists(notification_map_path)) {
      cat(
-          "Carte non disponible : exécuter `Rscript R/03b_alert_notification_performance_map.R` ",
-          "après `R/02_alert_trends.R` pour générer la carte de performance de notification."
+          '<div class="callout-custom" style="background-color: #fef2f2; border-left-color: #dc2626;">',
+          "<strong>Carte non disponible :</strong> exécuter <code>Rscript R/03b_alert_notification_performance_map.R</code> ",
+          "après <code>R/02_alert_trends.R</code> pour générer la carte de performance de notification.",
+          "</div>"
      )
 } else {
      knitr::include_graphics(notification_map_path)
 }
 ```
 
-```{r, results='asis'}
-if (!is.null(notification_map_categories)) {
-     cat(
-          "Répartition des zones cartographiées : ",
-          paste0(
-               notification_map_categories$Catégorie,
-               " (n = ",
-               notification_map_categories$n_zones,
-               ")",
-               collapse = " ; "
-          ),
-          ".",
-          sep = ""
-     )
+Cette lecture spatiale complète les analyses temporelles : elle identifie les zones en sous-notification critique où déployer en priorité la recherche active des cas et le réseau de notification communautaire (RECO).
+
+```{r}
+#| label: tbl-notification-performance-zones
+#| tbl-cap: "Détail de la performance de notification par zone de santé cartographiée (3 dernières semaines)"
+if (!is.null(notification_map_zones_df) && nrow(notification_map_zones_df) > 0) {
+     tbl_data <- notification_map_zones_df |>
+          dplyr::mutate(
+               `AAI moyen` = sprintf("%.2f", `AAI moyen`),
+               `Délai moyen (jours)` = ifelse(is.na(`Délai moyen (jours)`), "-", sprintf("%.1f j", `Délai moyen (jours)`)),
+               `Tendance` = dplyr::case_when(
+                    `Tendance` == "Increasing" ~ "En hausse ↗",
+                    `Tendance` == "Decreasing" ~ "En baisse ↘",
+                    `Tendance` == "Stable" ~ "Stable →",
+                    TRUE ~ as.character(`Tendance`)
+               ),
+               `Catégorie` = dplyr::case_when(
+                    grepl("Sous-notif", `Catégorie`, ignore.case = TRUE) ~
+                         '<span class="status-badge status-sous">Sous-notification</span>',
+                    grepl("adéquat", `Catégorie`, ignore.case = TRUE) ~
+                         '<span class="status-badge status-adequat">Notification adéquate</span>',
+                    grepl("Sur-notif", `Catégorie`, ignore.case = TRUE) ~
+                         '<span class="status-badge status-sur">Surnotification</span>',
+                    TRUE ~ as.character(`Catégorie`)
+               )
+          ) |>
+          dplyr::select(
+               `Zone de santé` = `Zone de santé (GRID3)`,
+               `Province` = `Province (GRID3)`,
+               `AAI moyen`,
+               `Statut` = `Catégorie`,
+               `Délai moyen` = `Délai moyen (jours)`,
+               `Tendance`
+          )
+
+     knitr::kable(
+          tbl_data,
+          format = "html",
+          escape = FALSE,
+          align = c("l", "l", "r", "c", "r", "c")
+     ) |>
+          kableExtra::kable_styling(
+               bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+               font_size = 11,
+               full_width = TRUE
+          ) |>
+          kableExtra::column_spec(1, bold = TRUE) |>
+          kableExtra::column_spec(3, bold = TRUE) |>
+          kableExtra::scroll_box(height = "380px")
 }
 ```
 
-Cette lecture spatiale complète les analyses temporelles : elle identifie les
-zones en sous-notification critique où déployer en priorité la recherche active
-des cas et le réseau de notification communautaire (RECO).
 
 # Conclusion et recommandations
 
@@ -1562,6 +1777,7 @@ Les résultats présentés dans ce rapport doivent être interprétés à la lum
 ```{=html}
 <div style="text-align: center; color: #64748b; margin-top: 3rem; margin-bottom: 2rem; font-size: 0.85rem;">
   <em>Rapport généré automatiquement par le système d'analyse et tableau de bord des alertes MVE / BVD.</em><br>
-  <strong>IOA-CAI &copy; `r report_year`</strong>
+  <strong>IOA-CAI &copy; `r report_year`</strong> &nbsp;|&nbsp; 
+  <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" style="color: #0d6efd; text-decoration: underline; font-weight: 500;">Accéder à la plateforme en ligne (GitHub Pages)</a>
 </div>
 ```

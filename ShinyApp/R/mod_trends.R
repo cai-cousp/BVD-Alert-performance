@@ -156,7 +156,7 @@ trends_ui <- function(id) {
             class = "d-flex justify-content-between align-items-center",
             tags$span(
               tags$i(class = "bi bi-bar-chart-fill me-2 text-primary"),
-              "Performance globale des alertes (adéquation cas & décès)"
+              textOutput(ns("title_ensemble_adeq"), inline = TRUE)
             ),
             downloadButton(
               ns("download_plot_adeq_ensemble"),
@@ -533,6 +533,15 @@ trends_server <- function(id, filters = NULL) {
       alert_trend_title_fr(ensemble_alert_metric())
     })
 
+    output$title_ensemble_adeq <- renderText({
+      switch(
+        ensemble_alert_metric(),
+        "case"  = "Performance des alertes de cas (adéquation vivants)",
+        "death" = "Performance des alertes de décès (adéquation décès)",
+        "all"   = "Performance globale des alertes (adéquation cas & décès)"
+      )
+    })
+
     # 1a. Graphique de gauche : tendances des alertes de cas
     output$ip_case_ensemble <- renderPlotly({
       plot_alert_trends_interactive(
@@ -540,7 +549,7 @@ trends_server <- function(id, filters = NULL) {
         hz = "Ensemble de la zone affectée",
         metric = "case",
         colour_by_adequacy = TRUE,
-        show_legend = FALSE,
+        show_legend = TRUE,
         show_header = FALSE,
         show_caption = FALSE
       ) |>
@@ -554,7 +563,7 @@ trends_server <- function(id, filters = NULL) {
         hz = "Ensemble de la zone affectée",
         metric = "death",
         colour_by_adequacy = TRUE,
-        show_legend = FALSE,
+        show_legend = TRUE,
         show_header = FALSE,
         show_caption = FALSE
       ) |>
@@ -566,6 +575,7 @@ trends_server <- function(id, filters = NULL) {
       plot_adequacy_stacked_interactive(
         data = trends_smooth_adeq,
         hz = "Ensemble de la zone affectée",
+        metric = ensemble_alert_metric(),
         show_legend = TRUE,
         show_header = FALSE,
         show_caption = FALSE
@@ -574,7 +584,11 @@ trends_server <- function(id, filters = NULL) {
     })
 
     output$p_adeq_ensemble_footnote <- renderText({
-      plot_adequacy_stacked(data = trends_smooth_adeq, hz = "Ensemble de la zone affectée") |>
+      plot_adequacy_stacked(
+        data = trends_smooth_adeq,
+        hz = "Ensemble de la zone affectée",
+        metric = ensemble_alert_metric()
+      ) |>
         plot_adequacy_footnote()
     })
 
@@ -611,7 +625,13 @@ trends_server <- function(id, filters = NULL) {
 
     output$title_hz_adeq <- renderText({
       hz <- selected_hz_value() %||% "Zone de santé"
-      paste0("Performance des alertes : ", hz)
+      metric_label <- switch(
+        hz_alert_metric(),
+        "case"  = "alertes de cas (adéquation vivants)",
+        "death" = "alertes de décès (adéquation décès)",
+        "all"   = "alertes"
+      )
+      paste0("Performance des ", metric_label, " : ", hz)
     })
 
     output$map_title_table1 <- renderText({
@@ -636,7 +656,7 @@ trends_server <- function(id, filters = NULL) {
         hz = selected_hz_value(),
         metric = "case",
         colour_by_adequacy = TRUE,
-        show_legend = FALSE,
+        show_legend = TRUE,
         show_header = FALSE,
         show_caption = FALSE
       ) |>
@@ -651,7 +671,7 @@ trends_server <- function(id, filters = NULL) {
         hz = selected_hz_value(),
         metric = "death",
         colour_by_adequacy = TRUE,
-        show_legend = FALSE,
+        show_legend = TRUE,
         show_header = FALSE,
         show_caption = FALSE
       ) |>
@@ -664,6 +684,7 @@ trends_server <- function(id, filters = NULL) {
       plot_adequacy_stacked_interactive(
         data = trends_smooth_adeq,
         hz = selected_hz_value(),
+        metric = hz_alert_metric(),
         show_legend = TRUE,
         show_header = FALSE,
         show_caption = FALSE
@@ -673,7 +694,11 @@ trends_server <- function(id, filters = NULL) {
 
     output$p_adeq_hz_footnote <- renderText({
       req(selected_hz_value())
-      plot_adequacy_stacked(data = trends_smooth_adeq, hz = selected_hz_value()) |>
+      plot_adequacy_stacked(
+        data = trends_smooth_adeq,
+        hz = selected_hz_value(),
+        metric = hz_alert_metric()
+      ) |>
         plot_adequacy_footnote()
     })
 
@@ -771,12 +796,13 @@ trends_server <- function(id, filters = NULL) {
     # 2. Graphique Performance Ensemble (PNG)
     output$download_plot_adeq_ensemble <- downloadHandler(
       filename = function() {
-        paste0("BVD_Adequation_Ensemble_", Sys.Date(), ".png")
+        paste0("BVD_Adequation_Ensemble_", ensemble_alert_metric(), "_", Sys.Date(), ".png")
       },
       content = function(file) {
         p <- plot_adequacy_stacked(
           data = trends_smooth_adeq,
-          hz = "Ensemble de la zone affectée"
+          hz = "Ensemble de la zone affectée",
+          metric = ensemble_alert_metric()
         )
         ggplot2::ggsave(file, plot = p, width = 10, height = 6, dpi = 300)
       }
@@ -814,13 +840,22 @@ trends_server <- function(id, filters = NULL) {
     output$download_plot_adeq_hz <- downloadHandler(
       filename = function() {
         hz <- selected_hz_value() %||% "Zone_sante"
-        paste0("BVD_Adequation_", gsub("[^A-Za-z0-9_]+", "_", hz), "_", Sys.Date(), ".png")
+        paste0(
+          "BVD_Adequation_",
+          gsub("[^A-Za-z0-9_]+", "_", hz),
+          "_",
+          hz_alert_metric(),
+          "_",
+          Sys.Date(),
+          ".png"
+        )
       },
       content = function(file) {
         hz <- selected_hz_value() %||% all_hz_individual[1]
         p <- plot_adequacy_stacked(
           data = trends_smooth_adeq,
-          hz = hz
+          hz = hz,
+          metric = hz_alert_metric()
         )
         ggplot2::ggsave(file, plot = p, width = 10, height = 6, dpi = 300)
       }

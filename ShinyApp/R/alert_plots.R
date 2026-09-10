@@ -645,6 +645,26 @@ position_alert_plotly_header <- function(widget,
                                          show_caption = TRUE,
                                          margin = NULL) {
   widget <- plotly::plotly_build(widget)
+
+  lbl_fr <- c(
+    "Under-alerting" = "Sous-alerte",
+    "Adequate"       = "Adéquat",
+    "Over-alerting"  = "Sur-alerte"
+  )
+
+  if (!is.null(widget$x$data)) {
+    widget$x$data <- lapply(widget$x$data, function(tr) {
+      if (!is.null(tr$name) && is.character(tr$name)) {
+        clean_name <- sub("^\\((.*?)(,\\s*[-0-9.]+)?\\)$", "\\1", tr$name)
+        if (clean_name %in% names(lbl_fr)) {
+          clean_name <- lbl_fr[[clean_name]]
+        }
+        tr$name <- clean_name
+      }
+      tr
+    })
+  }
+
   layout <- widget$x$layout
   annotations <- layout$annotations
   xaxis_names <- grep("^xaxis([0-9]+)?$", names(layout), value = TRUE)
@@ -709,7 +729,11 @@ position_alert_plotly_header <- function(widget,
 
   widget$x$layout$annotations <- annotations
   if (isTRUE(show_legend)) {
-    widget$x$layout$legend <- bands$legend
+    widget$x$layout$legend <- if (!isTRUE(show_header)) {
+      list(orientation = "h", x = 0, xanchor = "left", y = 1.02, yanchor = "bottom")
+    } else {
+      bands$legend
+    }
     widget$x$layout$showlegend <- TRUE
   } else {
     widget$x$layout$showlegend <- FALSE
@@ -723,6 +747,12 @@ position_alert_plotly_header <- function(widget,
       list(t = 15, r = 15, b = 50, l = 55)
     } else {
       list(t = 15, r = 15, b = 40, l = 55)
+    }
+  } else if (!isTRUE(show_header) && isTRUE(show_legend)) {
+    if (isTRUE(show_caption)) {
+      list(t = 38, r = 15, b = 50, l = 55)
+    } else {
+      list(t = 38, r = 15, b = 40, l = 55)
     }
   } else {
     alert_plotly_margins[[bands_name]]
@@ -1117,14 +1147,30 @@ build_plotly_alert_trends <- function(data, metric = c("case", "death"),
         } else {
           list(t = 15, r = 15, b = 40, l = 55)
         }
+      } else if (!isTRUE(show_header) && isTRUE(show_legend)) {
+        if (isTRUE(show_caption)) {
+          list(t = 38, r = 15, b = 50, l = 55)
+        } else {
+          list(t = 38, r = 15, b = 40, l = 55)
+        }
       } else {
         alert_plotly_margins$single
+      }
+
+      legend_cfg <- if (isTRUE(show_legend)) {
+        if (!isTRUE(show_header)) {
+          list(orientation = "h", x = 0, xanchor = "left", y = 1.02, yanchor = "bottom")
+        } else {
+          bands$legend
+        }
+      } else {
+        list(visible = FALSE)
       }
 
       p <- plotly::layout(
         p,
         annotations = annot_list,
-        legend = if (isTRUE(show_legend)) bands$legend else list(visible = FALSE),
+        legend = legend_cfg,
         showlegend = isTRUE(show_legend),
         xaxis = xaxis_cfg,
         yaxis = list(title = y_label),
@@ -1324,11 +1370,13 @@ plot_adequacy_stacked <- function(
     ncol = NULL,
     scales = "fixed",
     one_per_hz = FALSE,
+    metric = c("all", "case", "death"),
     start_date = as.Date("2026-05-01"),
     date_breaks = NULL,
     source_date = NULL,
     for_plotly = FALSE
 ) {
+  metric <- if (is.null(metric)) "all" else match.arg(metric, c("all", "case", "death"))
 
   if (is.numeric(date_breaks)) {
     if (length(date_breaks) != 1L || !is.finite(date_breaks) ||
@@ -1352,7 +1400,7 @@ plot_adequacy_stacked <- function(
     plots <- lapply(hz_list, function(z) {
       plot_adequacy_stacked(
         data = prep, hz = z, facet = FALSE, ncol = NULL, scales = scales,
-        one_per_hz = FALSE, start_date = start_date,
+        one_per_hz = FALSE, metric = metric, start_date = start_date,
         date_breaks = date_breaks, source_date = source_date,
         for_plotly = for_plotly
       )
@@ -1367,20 +1415,27 @@ plot_adequacy_stacked <- function(
   plot_data <- plot_data |>
     dplyr::arrange(zone_sante_notification, date)
 
+  metric_cols <- switch(
+    metric,
+    "case"  = "case_adequacy",
+    "death" = "death_adequacy",
+    "all"   = c("case_adequacy", "death_adequacy", "aai", "adequacy_cmr")
+  )
+
   # Pivot to long format: one row per (date, metric) so a single geom_col()
-  # with position = "dodge" produces two properly dodged bars per date.
+  # with position = "dodge" produces properly dodged bars per date.
   plot_data_long <- plot_data |>
     tidyr::pivot_longer(
-      cols = dplyr::any_of(c("case_adequacy", "death_adequacy", "aai", "adequacy_cmr")),
-      names_to = "metric",
+      cols = dplyr::any_of(metric_cols),
+      names_to = "metric_type",
       values_to = "adequacy"
     ) |>
     dplyr::mutate(
       metric_label = dplyr::case_when(
-        metric == "case_adequacy"  ~ "Performance des alertes vivants",
-        metric == "death_adequacy" ~ "Performance des alertes décès",
-        metric == "aai"            ~ "Performance globale",
-       # metric == "adequacy_cmr"   ~ "Rapport alertes décès / décès attendus CMR"
+        metric_type == "case_adequacy"  ~ "Performance des alertes vivants",
+        metric_type == "death_adequacy" ~ "Performance des alertes décès",
+        metric_type == "aai"            ~ "Performance globale",
+       # metric_type == "adequacy_cmr"   ~ "Rapport alertes décès / décès attendus CMR"
       ),
       metric_label = factor(
         metric_label,
@@ -1424,10 +1479,22 @@ plot_adequacy_stacked <- function(
   }
 
   # --- Labels / theme / scales -------------------------------------------
-  subtitle_text <- paste0(
-    "Performance of live alerts = case_alerts / case_alert_threshold\n",
-    "Performance of death alerts = death_alerts / death_alert_threshold\n",
-    "Overall performance = (performance of live alerts + performance of death alerts) / 2\n"
+  title_text <- switch(
+    metric,
+    "case"  = "Performance des alertes de cas (adéquation vivants)",
+    "death" = "Performance des alertes de décès (adéquation décès)",
+    "all"   = "Performance des alertes : ratios cas & décès"
+  )
+
+  subtitle_text <- switch(
+    metric,
+    "case"  = "Performance des alertes vivants = alertes_cas / seuil_cas\n",
+    "death" = "Performance des alertes décès = alertes_décès / seuil_décès\n",
+    "all"   = paste0(
+      "Performance of live alerts = case_alerts / case_alert_threshold\n",
+      "Performance of death alerts = death_alerts / death_alert_threshold\n",
+      "Overall performance = (performance of live alerts + performance of death alerts) / 2\n"
+    )
   )
   if (single_hz) {
     zone_label <- if (hz[[1L]] == "Ensemble de la zone affectée") {
@@ -1461,7 +1528,7 @@ plot_adequacy_stacked <- function(
       )
     ) +
     labs(
-      title = "Performance des alertes : ratios cas & décès",
+      title = title_text,
       subtitle = NULL,
       x = "Semaine de notification (date de début)",
       y = "Performance (% du seuil)",
@@ -1535,6 +1602,7 @@ plot_adequacy_footnote <- function(plot) {
 #'   list of plotly htmlwidgets keyed by `zone_sante_notification`.
 #' @export
 plot_adequacy_stacked_interactive <- function(...,
+                                              metric = c("all", "case", "death"),
                                               tooltip = "text",
                                               show_legend = TRUE,
                                               show_header = TRUE,
@@ -1548,6 +1616,12 @@ plot_adequacy_stacked_interactive <- function(...,
   }
 
   dots <- list(...)
+  metric <- if (!is.null(dots$metric)) {
+    match.arg(dots$metric, c("all", "case", "death"))
+  } else {
+    match.arg(metric)
+  }
+
   show_legend <- if (!is.null(dots$show_legend)) isTRUE(dots$show_legend) else isTRUE(show_legend)
   show_header <- if (!is.null(dots$show_header)) isTRUE(dots$show_header) else isTRUE(show_header)
   show_caption <- if (!is.null(dots$show_caption)) isTRUE(dots$show_caption) else isTRUE(show_caption)
@@ -1573,6 +1647,7 @@ plot_adequacy_stacked_interactive <- function(...,
       sub_args <- dots
       sub_args$hz <- z
       sub_args$one_per_hz <- FALSE
+      sub_args$metric <- metric
       sub_args$show_legend <- show_legend
       sub_args$show_header <- show_header
       sub_args$show_caption <- show_caption
@@ -1588,6 +1663,7 @@ plot_adequacy_stacked_interactive <- function(...,
     {
       gg_args <- dots
       gg_args$for_plotly <- TRUE
+      gg_args$metric <- metric
       p <- suppressWarnings(do.call(plot_adequacy_stacked, gg_args))
       suppressWarnings(plotly::ggplotly(p, tooltip = tooltip))
     },
@@ -1642,9 +1718,9 @@ plot_adequacy_stacked_interactive <- function(...,
       tooltip_text = paste0(
         "Zone de santé : ", zone_sante_notification,
         "\nSemaine de notification (début) : ", format(date, "%d/%m/%Y"),
-        "\nPerformance alertes vivants : ", ifelse(is.na(case_adequacy), "N/A", paste0(round(case_adequacy * 100, 0), "%")),
-        "\nPerformance alertes décès : ", ifelse(is.na(death_adequacy), "N/A", paste0(round(death_adequacy * 100, 0), "%")),
-        if (has_aai) paste0("\nPerformance globale : ", ifelse(is.na(aai), "N/A", paste0(round(aai * 100, 0), "%"))) else ""
+        if (metric %in% c("all", "case")) paste0("\nPerformance alertes vivants : ", ifelse(is.na(case_adequacy), "N/A", paste0(round(case_adequacy * 100, 0), "%"))) else "",
+        if (metric %in% c("all", "death")) paste0("\nPerformance alertes décès : ", ifelse(is.na(death_adequacy), "N/A", paste0(round(death_adequacy * 100, 0), "%"))) else "",
+        if (metric == "all" && has_aai) paste0("\nPerformance globale : ", ifelse(is.na(aai), "N/A", paste0(round(aai * 100, 0), "%"))) else ""
       )
     ) |>
     dplyr::arrange(zone_sante_notification, date)
@@ -1653,27 +1729,38 @@ plot_adequacy_stacked_interactive <- function(...,
   hz_list <- unique(plot_data$zone_sante_notification)
 
   one_hz_plot <- function(hz_name, df) {
-    p <- plotly::plot_ly(
-      data = df, x = ~date, y = ~case_adequacy,
-      type = "bar", name = "Performance des alertes vivants",
-      marker = list(color = "steelblue", line = list(color = "steelblue", width = 0)),
-      text = ~tooltip_text, hoverinfo = "text",
-      textposition = "none",
-      showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
-    ) |>
-      plotly::add_bars(
-        y = ~death_adequacy, name = "Performance des alertes décès",
-        marker = list(color = "tomato",
-                      line = list(color = "tomato", width = 0)),
-        text = ~tooltip_text, hoverinfo = "text",
-        textposition = "none",
-        showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
-      )
+    p <- plotly::plot_ly()
 
-    if (has_aai) {
+    if (metric %in% c("all", "case")) {
       p <- p |>
         plotly::add_bars(
-          y = ~aai, name = "Performance globale",
+          data = df, x = ~date, y = ~case_adequacy,
+          name = "Performance des alertes vivants",
+          marker = list(color = "steelblue", line = list(color = "steelblue", width = 0)),
+          text = ~tooltip_text, hoverinfo = "text",
+          textposition = "none",
+          showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
+        )
+    }
+
+    if (metric %in% c("all", "death")) {
+      p <- p |>
+        plotly::add_bars(
+          data = df, x = ~date, y = ~death_adequacy,
+          name = "Performance des alertes décès",
+          marker = list(color = "tomato",
+                        line = list(color = "tomato", width = 0)),
+          text = ~tooltip_text, hoverinfo = "text",
+          textposition = "none",
+          showlegend = (isTRUE(show_legend) && hz_name == hz_list[1L])
+        )
+    }
+
+    if (metric == "all" && has_aai) {
+      p <- p |>
+        plotly::add_bars(
+          data = df, x = ~date, y = ~aai,
+          name = "Performance globale",
           marker = list(color = "purple",
                         line = list(color = "purple", width = 0)),
           text = ~tooltip_text, hoverinfo = "text",
@@ -1721,8 +1808,16 @@ plot_adequacy_stacked_interactive <- function(...,
       tickfont = list(size = 10)
     )
 
-    all_adeq_vals <- c(df$case_adequacy, df$death_adequacy)
-    if (has_aai) all_adeq_vals <- c(all_adeq_vals, df$aai)
+    all_adeq_vals <- c()
+    if (metric %in% c("all", "case") && "case_adequacy" %in% names(df)) {
+      all_adeq_vals <- c(all_adeq_vals, df$case_adequacy)
+    }
+    if (metric %in% c("all", "death") && "death_adequacy" %in% names(df)) {
+      all_adeq_vals <- c(all_adeq_vals, df$death_adequacy)
+    }
+    if (metric == "all" && has_aai && "aai" %in% names(df)) {
+      all_adeq_vals <- c(all_adeq_vals, df$aai)
+    }
     valid_adeq_df <- all_adeq_vals[!is.na(all_adeq_vals)]
     has_over_100_df <- length(valid_adeq_df) > 0L && any(valid_adeq_df >= 1)
 
@@ -1745,9 +1840,16 @@ plot_adequacy_stacked_interactive <- function(...,
         margin = calc_margin
       )
 
+    chart_title <- switch(
+      metric,
+      "case"  = "Performance des alertes de cas",
+      "death" = "Performance des alertes de décès",
+      "all"   = "Performance des alertes : ratios cas & décès"
+    )
+
     if (length(hz_list) > 1L) {
       if (isTRUE(show_header)) {
-        p <- plotly::layout(p, title = hz_name)
+        p <- plotly::layout(p, title = paste0(chart_title, " : ", hz_name))
       }
     } else {
       if (isTRUE(show_header)) {
@@ -1761,7 +1863,7 @@ plot_adequacy_stacked_interactive <- function(...,
         )
         p <- plotly::layout(
           p,
-          title = "Alert Adequacy: Case & Death Ratios",
+          title = chart_title,
           annotations = c(annot_header, annot_list)
         )
       }
