@@ -6,9 +6,9 @@ A polished, website-style Shiny application for interactive exploration of Ebola
 
 This dashboard provides epidemiologists with interactive surveillance monitoring:
 
-- **Trends** — Longitudinal alert counts, threshold bands, adequacy indices, and model parameter synthesis tables (at aggregate ensemble and individual health zone levels)
+- **Trends & Performance** — Longitudinal alert counts, threshold bands, loess/polynomial curve fitting, and adequacy indices with unconditional **Alert Adequacy Index (AAI / Performance globale)** benchmarking (available across aggregate ensemble and individual health zone levels, switchable between **Cas** and **Décès** streams)
 - **Interactive notification map** — Leaflet health-zone performance map with three-window hover indicators. Clicking a health zone synchronizes the health-zone section and its map-linked longitudinal tables.
-- **Export** — Report downloads (HTML) and data exports (Excel, CSV)
+- **Export** — Report downloads (interactive HTML report with direct download fallback) and data exports (Excel, CSV)
 
 ## Data Sources
 
@@ -21,31 +21,38 @@ The app consumes pre-computed outputs from the alert analysis pipeline. It does 
 | `02_trends_smooth.rds` | `R/02_alert_trends.R` | Alert counts joined with thresholds and adequacy indices (42 columns) |
 | `02_recent_adequacy.xlsx` | `R/02_alert_trends.R` | Per-HZ adequacy summary with trend direction |
 
-Data is loaded automatically from the most recent dated subdirectory in `Alerts/output/`.
+Data is loaded automatically from the most recent dated subdirectory in `output/` (or from bundled `ShinyApp/data/` in static/Shinylive deployment).
 
 ## File Structure
 
 ```
 ShinyApp/
-├── app.R                      # Launch script (entry point)
-├── ui.R                       # UI definition (website-style layout)
-├── server.R                   # Server definition (reactive flow, module init)
-├── report_template.qmd        # Parameterized Quarto report template
+├── app.R                          # Launch script (entry point)
+├── ui.R                           # UI definition (website-style layout)
+├── server.R                       # Server definition (reactive flow, module init)
+├── Alert_performance_report.qmd   # Parameterized Quarto report template
+├── Alert_performance_report.html  # Bundled standalone HTML report for offline/client export
 ├── README.md
 ├── R/
-│   ├── global.R               # Data loading, shared constants (sourced once)
-│   ├── mod_utils.R            # Filter module, litera theme, helpers
-│   ├── mod_trends.R           # Tab 1: Trend charts, adequacy, synthesis tables
-│   ├── map_data_helpers.R     # Interactive notification map and selected-zone tables
-│   ├── mod_map.R              # Leaflet map module
-│   └── mod_export.R           # Tab 2: Export handlers
+│   ├── global.R                   # Data loading, shared constants (sourced once)
+│   ├── alert_plots.R              # Trend curve fitting & adequacy stacked bar charts
+│   ├── mod_utils.R                # Filter module, litera theme, helpers
+│   ├── mod_trends.R               # Tab 1: Trend charts, adequacy, synthesis tables
+│   ├── map_data_helpers.R         # Interactive notification map and selected-zone tables
+│   ├── mod_map.R                  # Leaflet map module
+│   └── mod_export.R               # Tab 2: Export handlers
 ├── www/
-│   └── custom.css             # Website-style responsive styling
+│   └── custom.css                 # Website-style responsive styling
 └── tests/
     └── testthat/
         ├── test-mod_data_loading.R
         ├── test-map_data_helpers.R
-        └── test-mod_trends_tables.R
+        ├── test-mod_trends_tables.R
+        ├── test-mod_trends_alert_tabs.R
+        ├── test-plot_alert_trends_line.R
+        ├── test-export_report_download.R
+        ├── test-pipeline_sync.R
+        └── test-ui.R
 ```
 
 `app.R` is the launch entry point. It sources `ui.R` and `server.R`,
@@ -101,17 +108,26 @@ shinyApp(ui, server)
 2. Run `R/02_alert_trends.R` to generate trends and adequacy data
 3. Launch the app — it auto-detects the latest output directory
 
-## Design
+## Design & Interactive Analytics
 
 - **Theme**: `litera` Bootswatch — clean, publication-quality aesthetic (replaces dashboard-style `flatly`)
 - **Layout**: Website-style with `page_navbar(fillable = FALSE)`, horizontal filter bar, stacked cards
 - **No sidebar**: Filters are integrated into each tab's content area
 - **No value boxes**: Replaced with elegant card-based layout
-- **Responsive**: Mobile-friendly with CSS media queries
+- **Dual Alert Stream Switcher (Cas vs. Décès)**:
+  - **Cas**: Displays weekly live case alert volumes, dynamic thresholds, and loess/polynomial fit line isolated to case signals.
+  - **Décès**: Displays weekly community death alert volumes, dynamic thresholds, and loess/polynomial fit line isolated to death signals.
+- **Unconditional AAI Performance Benchmarking**:
+  - The performance (adéquation) plot always pairs the chosen alert stream with the **Alert Adequacy Index (AAI / Performance globale)**:
+    - On **Cas**: Displays *Performance des alertes vivants* alongside *Performance globale (AAI)*.
+    - On **Décès**: Displays *Performance des alertes décès* alongside *Performance globale (AAI)*.
+    - Card headers and subtitles dynamically reflect the active surveillance stream and formula definitions.
+- **Responsive**: Mobile-friendly with CSS media queries and responsive plot grids
 
 ## Export Features
 
-- **HTML report**: Self-contained parameterized Quarto report
+- **Interactive HTML report**: Self-contained parameterized Quarto report generated dynamically via `docs/reports/Alert_performance_report.qmd`.
+- **Zero-Server Download Fallback**: In Shinylive / WebAssembly mode where background CLI rendering is unavailable, the export module provides direct download and preview fallbacks using the pre-compiled `Alert_performance_report.html`.
 - **Excel export**: Multi-sheet workbook with filtered data and metadata
 - **CSV export**: Comma-separated trends data
 - **Interactive chart export**: Built-in plotly PNG download per chart
@@ -122,6 +138,7 @@ shinyApp(ui, server)
 See the methods notes for detailed computational approaches:
 - `methods_note_alert_thresholds.qmd` — Threshold computation methods
 - `methods_note_alert_trends.qmd` — Trend analysis and adequacy methods
+- `Alert_performance_report.qmd` — Consolidated operational surveillance report
 
 ## Deployment to GitHub Pages (Shinylive / webR)
 

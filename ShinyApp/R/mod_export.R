@@ -54,14 +54,14 @@ export_ui <- function(id) {
           tags$dl(
             tags$dt("Rapport HTML"),
             tags$dd(
-              "Télécharge le rapport Quarto complet et autonome (report_template.html) incluant les graphiques interactifs, ",
+              "Télécharge le rapport Quarto complet et autonome (Alert_performance_report.html) incluant les graphiques interactifs, ",
               "les tableaux de seuils et l'évaluation de performance globale et par zone de santé. ",
               tags$span(
                 class = "text-muted",
                 "(Disponible également en ",
                 tags$a(
-                  href = "report_template.html",
-                  download = "report_template.html",
+                  href = "Alert_performance_report.html",
+                  download = "Alert_performance_report.html",
                   target = "_blank",
                   class = "text-decoration-underline text-primary",
                   "téléchargement direct alternatif"
@@ -350,11 +350,11 @@ export_server <- function(id, filters) {
     # --- HTML report download -------------------------------------------------
     output$download_report <- downloadHandler(
       filename = function() {
-        "report_template.html"
+        "Alert_performance_report.html"
       },
       content = function(file) {
         target_dir <- if (exists("app_dir", inherits = TRUE)) app_dir else NULL
-        report_html <- find_report_template_html(target_dir)
+        report_html <- find_alert_report_html(target_dir)
 
         if (!is.null(report_html) && file.exists(report_html)) {
           file.copy(report_html, file, overwrite = TRUE)
@@ -419,9 +419,10 @@ export_server <- function(id, filters) {
   })
 }
 
-# --- Helper: locate pre-rendered report_template.html -------------------------
-find_report_template_html <- function(app_directory = NULL) {
-  if (is.null(app_directory)) {
+# --- Helper: locate pre-rendered Alert_performance_report.html ----------------
+find_alert_report_html <- function(app_directory = NULL) {
+  explicit_app_dir <- !is.null(app_directory)
+  if (!explicit_app_dir) {
     if (exists("app_dir", envir = parent.frame())) {
       app_directory <- get("app_dir", envir = parent.frame())
     } else if (exists("app_dir", envir = .GlobalEnv)) {
@@ -429,24 +430,72 @@ find_report_template_html <- function(app_directory = NULL) {
     }
   }
 
-  candidates <- unique(c(
+  detected_root <- NULL
+  if (!explicit_app_dir) {
+    if (exists("root_dir", envir = parent.frame())) {
+      detected_root <- get("root_dir", envir = parent.frame())
+    } else if (exists("root_dir", envir = .GlobalEnv)) {
+      detected_root <- get("root_dir", envir = .GlobalEnv)
+    }
+  }
+  if (is.null(detected_root) && !is.null(app_directory)) {
+    detected_root <- dirname(app_directory)
+  }
+
+  # Primary candidates: Alert_performance_report.html
+  primary_candidates <- unique(c(
+    if (!is.null(detected_root)) file.path(detected_root, "docs", "reports", "Alert_performance_report.html"),
+    if (!is.null(app_directory)) file.path(dirname(app_directory), "docs", "reports", "Alert_performance_report.html"),
+    file.path(getwd(), "docs", "reports", "Alert_performance_report.html"),
+    file.path(getwd(), "..", "docs", "reports", "Alert_performance_report.html"),
+    file.path("..", "docs", "reports", "Alert_performance_report.html"),
+    file.path("docs", "reports", "Alert_performance_report.html"),
+    if (!is.null(app_directory)) file.path(app_directory, "Alert_performance_report.html"),
+    if (!is.null(app_directory)) file.path(app_directory, "www", "Alert_performance_report.html"),
+    file.path(getwd(), "ShinyApp", "Alert_performance_report.html"),
+    file.path(getwd(), "Alert_performance_report.html"),
+    file.path(getwd(), "www", "Alert_performance_report.html")
+  ))
+
+  existing_primary <- primary_candidates[!is.na(primary_candidates) & file.exists(primary_candidates)]
+  if (length(existing_primary) > 0L) {
+    if (length(existing_primary) > 1L) {
+      mtimes <- file.info(existing_primary)$mtime
+      best_idx <- which.max(mtimes)
+      return(normalizePath(existing_primary[[best_idx]], mustWork = FALSE))
+    }
+    return(normalizePath(existing_primary[[1L]], mustWork = FALSE))
+  }
+
+  # Fallback candidates: legacy report_template.html
+  fallback_candidates <- unique(c(
+    if (!is.null(detected_root)) file.path(detected_root, "docs", "reports", "report_template.html"),
     if (!is.null(app_directory)) file.path(app_directory, "report_template.html"),
     if (!is.null(app_directory)) file.path(app_directory, "www", "report_template.html"),
     if (!is.null(app_directory)) file.path(dirname(app_directory), "docs", "reports", "report_template.html"),
-    file.path(getwd(), "report_template.html"),
-    file.path(getwd(), "ShinyApp", "report_template.html"),
     file.path(getwd(), "docs", "reports", "report_template.html"),
+    file.path(getwd(), "ShinyApp", "report_template.html"),
+    file.path(getwd(), "report_template.html"),
     file.path(getwd(), "www", "report_template.html"),
     file.path("..", "docs", "reports", "report_template.html"),
     file.path("docs", "reports", "report_template.html")
   ))
 
-  existing <- candidates[!is.na(candidates) & file.exists(candidates)]
-  if (length(existing) > 0L) {
-    return(normalizePath(existing[[1L]], mustWork = FALSE))
+  existing_fallback <- fallback_candidates[!is.na(fallback_candidates) & file.exists(fallback_candidates)]
+  if (length(existing_fallback) > 0L) {
+    if (length(existing_fallback) > 1L) {
+      mtimes <- file.info(existing_fallback)$mtime
+      best_idx <- which.max(mtimes)
+      return(normalizePath(existing_fallback[[best_idx]], mustWork = FALSE))
+    }
+    return(normalizePath(existing_fallback[[1L]], mustWork = FALSE))
   }
+
   NULL
 }
+
+# Alias for backward compatibility
+find_report_template_html <- find_alert_report_html
 
 # --- Fallback simple HTML report generator -----------------------------------
 write_simple_html_report <- function(file, trends_dat, synth_dat, filters) {

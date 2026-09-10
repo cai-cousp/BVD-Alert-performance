@@ -1,5 +1,5 @@
 # =============================================================================
-# Tests for report_template.html download export in ShinyApp
+# Tests for Alert_performance_report.html download export in ShinyApp
 # =============================================================================
 
 library(testthat)
@@ -35,23 +35,33 @@ if (!is.na(shiny_root)) {
   })
 }
 
-test_that("find_report_template_html locates report_template.html in shiny_root", {
+test_that("find_alert_report_html locates Alert_performance_report.html in docs/reports or shiny_root", {
   skip_if(is.na(shiny_root), message = "shiny_root could not be resolved")
 
-  # Arrange
-  expected_file <- file.path(shiny_root, "report_template.html")
-  skip_if(!file.exists(expected_file), message = "report_template.html not present in ShinyApp")
+  expected_docs_file <- file.path(dirname(shiny_root), "docs", "reports", "Alert_performance_report.html")
+  expected_app_file  <- file.path(shiny_root, "Alert_performance_report.html")
+
+  skip_if(!file.exists(expected_docs_file) && !file.exists(expected_app_file),
+          message = "Alert_performance_report.html not present in docs/reports or ShinyApp")
 
   # Act
-  found_path <- find_report_template_html(shiny_root)
+  found_path <- find_alert_report_html(shiny_root)
 
   # Assert
   expect_false(is.null(found_path))
   expect_true(file.exists(found_path))
-  expect_equal(normalizePath(found_path), normalizePath(expected_file))
+  expect_true(grepl("Alert_performance_report\\.html$", found_path))
 })
 
-test_that("find_report_template_html returns NULL when no template is found", {
+test_that("find_report_template_html backwards compatibility alias works", {
+  skip_if(is.na(shiny_root), message = "shiny_root could not be resolved")
+
+  found_path <- find_report_template_html(shiny_root)
+  expect_false(is.null(found_path))
+  expect_true(file.exists(found_path))
+})
+
+test_that("find_alert_report_html returns NULL when no template is found", {
   # Arrange: create an isolated empty directory
   temp_dir <- tempfile("test_empty_app_dir_")
   dir.create(temp_dir)
@@ -59,7 +69,7 @@ test_that("find_report_template_html returns NULL when no template is found", {
 
   # Act: with working directory set to empty directory
   result <- withr::with_dir(temp_dir, {
-    find_report_template_html(app_directory = temp_dir)
+    find_alert_report_html(app_directory = temp_dir)
   })
 
   # Assert
@@ -75,10 +85,10 @@ test_that("export_ui generates download_report button with arrow icon and correc
   expect_true(grepl("export-download_report", ui_str))
   expect_true(grepl("T[ée]l[ée]charger le rapport \\(HTML\\)", ui_str))
   expect_true(grepl("file-earmark-arrow-down|download", ui_str))
-  expect_true(grepl("report_template\\.html", ui_str))
+  expect_true(grepl("Alert_performance_report\\.html", ui_str))
 })
 
-test_that("export module downloadHandler serves report_template.html with exact filename", {
+test_that("export module downloadHandler serves Alert_performance_report.html with exact filename", {
   skip_if(is.na(shiny_root), message = "shiny_root could not be resolved")
 
   # Arrange: Mock minimal filters
@@ -95,7 +105,7 @@ test_that("export module downloadHandler serves report_template.html with exact 
 
     # Assert: download handler executed and returned destination path
     expect_type(dl_path, "character")
-    expect_equal(basename(dl_path), "report_template.html")
+    expect_equal(basename(dl_path), "Alert_performance_report.html")
     expect_true(file.exists(dl_path))
     expect_gt(file.size(dl_path), 1000L)
 

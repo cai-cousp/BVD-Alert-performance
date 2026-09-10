@@ -248,14 +248,19 @@ json_manifest <- jsonlite::toJSON(manifest, auto_unbox = TRUE, pretty = TRUE)
 writeLines(json_manifest, file.path(data_dest, "manifest.json"))
 message("Manifest generated: total bundled payload is ", total_kb, " KB (< ", round(total_kb / 1024, 2), " MB).")
 
-# --- Synchronize report_template.html -----------------------------------------
+# --- Synchronize Alert_performance_report.html -------------------------------
 report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
 if (!file.exists(report_src)) {
   report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
 }
 if (file.exists(report_src)) {
+  file.copy(report_src, file.path(app_dir, "Alert_performance_report.html"), overwrite = TRUE)
   file.copy(report_src, file.path(app_dir, "report_template.html"), overwrite = TRUE)
-  message("Synchronized report_template.html to ShinyApp/ (", round(file.size(report_src) / (1024 * 1024), 2), " MB).")
+  www_dir <- file.path(app_dir, "www")
+  if (dir.exists(www_dir)) {
+    file.copy(report_src, file.path(www_dir, "Alert_performance_report.html"), overwrite = TRUE)
+  }
+  message("Synchronized Alert_performance_report.html to ShinyApp/ (", round(file.size(report_src) / (1024 * 1024), 2), " MB).")
 }
 
 message("Done preparing bundled data!")

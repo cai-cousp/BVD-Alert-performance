@@ -25,20 +25,25 @@ See [docs/README.md](docs/README.md) for the consolidated documentation index
 
 ```
 .
-├── R/                          # Core analysis scripts
+├── R/                          # Core analysis scripts & plotting library
 │   ├── 01_alert_thresholds.R
 │   ├── 01b_alert_thresholds_windows.R
 │   ├── 02_alert_trends.R
 │   ├── 03_alert_mapping_capacity.R
-│   └── 03b_alert_notification_performance_map.R
+│   ├── 03b_alert_notification_performance_map.R
+│   └── alert_plots.R           # Reusable ggplot2 & Plotly trend/adequacy plots
 ├── alert_helpers/              # Modular helper functions
-├── tests/testthat/             # testthat unit and integration tests
+├── ShinyApp/                   # Interactive dashboard (WebR/Shinylive compatible)
+│   ├── R/                      # App modules and synced plotting functions
+│   └── tests/testthat/         # Dashboard unit and module tests
+├── tests/testthat/             # Pipeline unit and integration tests
 ├── trend_viewer.R              # Standalone trend viewer script
-└── docs/                       # Consolidated documentation
+└── docs/                       # Consolidated documentation & reports
     ├── README.md
     ├── glossaries/             # Column definitions for output tables
     ├── methods/                # Quarto methods notes (EN + FR)
-    └── plans/                  # Historical implementation plans
+    ├── plans/                  # Implementation and design plans
+    └── reports/                # Publication-quality Quarto reports
 ```
 
 > **Methodology design notes** (project brief, CFR methods, Poisson offset
@@ -70,8 +75,14 @@ the missing package.
 
 ### Run the tests
 
+Run the pipeline unit tests as well as the ShinyApp dashboard test suite:
+
 ```bash
+# Pipeline and methods tests
 Rscript -e 'testthat::test_dir("tests/testthat")'
+
+# Interactive ShinyApp module and visualization tests
+Rscript -e 'testthat::test_dir("ShinyApp/tests/testthat")'
 ```
 
 ### Run the analysis
@@ -98,11 +109,15 @@ grey base, province outlines and labels, repelled zone labels, scale bar,
 north arrow and DRC inset), GRID3 v8 geography, and writes PNG/PDF plus data
 and audit artifacts next to the source data.
 
-### Render the methods notes
+### Render the methods notes & reports
 
 ```bash
+# Render methods notes
 quarto render docs/methods/methods_note_alert_thresholds.qmd
 quarto render docs/methods/methods_note_alert_trends.qmd
+
+# Render the comprehensive alert performance report
+quarto render docs/reports/Alert_performance_report.qmd
 ```
 
 Rendered HTML files are gitignored.

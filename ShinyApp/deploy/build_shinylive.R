@@ -103,16 +103,21 @@ if (!dir.exists(dest_path)) {
   dir.create(dest_path, recursive = TRUE)
 }
 
-# Ensure report_template.html is synchronized into ShinyApp/ before Shinylive export
+# Ensure Alert_performance_report.html is synchronized into ShinyApp/ before Shinylive export
 report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
 if (!file.exists(report_src)) {
   report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
 }
-report_dest_app <- file.path(app_dir, "report_template.html")
+report_dest_app <- file.path(app_dir, "Alert_performance_report.html")
 if (file.exists(report_src)) {
   if (!file.exists(report_dest_app) || file.info(report_src)$mtime > file.info(report_dest_app)$mtime) {
     file.copy(report_src, report_dest_app, overwrite = TRUE)
-    message("Synchronized report_template.html into ShinyApp/ (", round(file.size(report_src) / (1024 * 1024), 2), " MB).")
+    file.copy(report_src, file.path(app_dir, "report_template.html"), overwrite = TRUE)
+    www_dir <- file.path(app_dir, "www")
+    if (dir.exists(www_dir)) {
+      file.copy(report_src, file.path(www_dir, "Alert_performance_report.html"), overwrite = TRUE)
+    }
+    message("Synchronized Alert_performance_report.html into ShinyApp/ (", round(file.size(report_src) / (1024 * 1024), 2), " MB).")
   }
 }
 
@@ -125,10 +130,11 @@ tryCatch({
   )
   message("\nExport completed successfully to: ", dest_path)
 
-  # Copy static report_template.html to export directory for direct static access as well
+  # Copy static report to export directory for direct static access as well
   if (file.exists(report_dest_app)) {
+    file.copy(report_dest_app, file.path(dest_path, "Alert_performance_report.html"), overwrite = TRUE)
     file.copy(report_dest_app, file.path(dest_path, "report_template.html"), overwrite = TRUE)
-    message("Copied static report_template.html directly into ", dest_path)
+    message("Copied static Alert_performance_report.html directly into ", dest_path)
   }
 
   # Inject Plotly and DataTables into index.html so webR/htmlwidgets find them immediately

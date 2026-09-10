@@ -27,6 +27,15 @@ and limitations. Render locally with `quarto render <file>.qmd`.
 - Trends methods note — [EN](methods/methods_note_alert_trends.qmd) /
   [FR](methods/methods_note_alert_trends_fr.qmd)
 
+## Reports
+
+Epidemiological surveillance reports and templates for decision-makers and field teams.
+
+- [Alert Performance Report](reports/Alert_performance_report.qmd) (`Alert_performance_report.qmd`) —
+  Self-contained publication report synthesizing epidemic indicators, longitudinal alert trends,
+  curve fitting, adequacy ratios, and spatial notification performance. Render locally with:
+  `quarto render docs/reports/Alert_performance_report.qmd`
+
 ## Plans
 
 Historical implementation and design plans.
