@@ -26,6 +26,129 @@ export_ui <- function(id) {
           ),
           class = "btn btn-primary"
         ),
+        tags$a(
+          id = ns("view_report"),
+          href = "Alert_performance_report.html",
+          target = "_blank",
+          class = "btn btn-outline-primary",
+          tags$span(
+            class = "btn-content",
+            bs_icon("box-arrow-up-right", class = "me-1"),
+            "Consulter le rapport"
+          )
+        ),
+        actionButton(
+          ns("open_browser_report"),
+          label = tags$span(
+            bs_icon("window-stack", class = "me-1"),
+            "Ouvrir dans le navigateur"
+          ),
+          class = "btn btn-outline-secondary",
+          title = "Ouvre le rapport directement dans votre navigateur par défaut (Google Chrome / Safari)"
+        ),
+        tags$script(HTML("
+          (function() {
+            function getStaticReportUrl() {
+              var isIframeApp = window.location.pathname.indexOf('/app_') !== -1;
+              return isIframeApp ? '../Alert_performance_report.html' : 'Alert_performance_report.html';
+            }
+
+            function syncReportElements() {
+              var reportUrl = getStaticReportUrl();
+              var viewBtn = document.getElementById('export-view_report');
+              if (viewBtn) {
+                viewBtn.setAttribute('href', reportUrl);
+              }
+              var altLink = document.getElementById('export-alt_report_link');
+              if (altLink) {
+                altLink.setAttribute('href', reportUrl);
+                altLink.setAttribute('download', 'Alert_performance_report.html');
+              }
+            }
+
+            function triggerBlobDownload(blob, filename) {
+              var blobUrl = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = filename || 'Alert_performance_report.html';
+              a.style.display = 'none';
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(function() {
+                if (a.parentNode) a.parentNode.removeChild(a);
+                URL.revokeObjectURL(blobUrl);
+              }, 60000);
+            }
+
+            function downloadReportWithFeedback(btn) {
+              var origHTML = btn.innerHTML;
+              btn.innerHTML = '<span class=\"spinner-border spinner-border-sm me-2\" role=\"status\" aria-hidden=\"true\"></span><span>T\\u00e9l\\u00e9chargement en cours...</span>';
+              btn.style.pointerEvents = 'none';
+
+              // Notify Shiny server to perform desktop save if running locally
+              if (window.Shiny && typeof window.Shiny.setInputValue === 'function') {
+                window.Shiny.setInputValue('export-report_download_requested', new Date().getTime());
+              }
+
+              var sessionHref = btn.getAttribute('href');
+              var staticUrl = getStaticReportUrl();
+              var candidates = [
+                staticUrl,
+                'Alert_performance_report.html',
+                'reports/Alert_performance_report.html'
+              ];
+              if (sessionHref && sessionHref !== '#' && sessionHref.indexOf('download') !== -1) {
+                candidates.push(sessionHref);
+              }
+
+              function tryNext(index) {
+                if (index >= candidates.length) {
+                  btn.innerHTML = origHTML;
+                  btn.style.pointerEvents = '';
+                  window.location.assign(staticUrl);
+                  return;
+                }
+
+                var url = candidates[index];
+                fetch(url, { cache: 'no-cache' })
+                  .then(function(resp) {
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    return resp.blob();
+                  })
+                  .then(function(blob) {
+                    if (blob.size < 1000) throw new Error('File payload too small');
+                    triggerBlobDownload(blob, 'Alert_performance_report.html');
+                    btn.innerHTML = '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-check2-circle me-1\" viewBox=\"0 0 16 16\"><path d=\"M2.5 8a5.5 5.5 0 0 1 8.25-4.764.5.5 0 0 0 .5-.866A6.5 6.5 0 1 0 14.5 8a.5.5 0 0 0-1 0 5.5 5.5 0 1 1-11 0z\"/><path d=\"M15.354 3.354a.5.5 0 0 0-.708-.708L8 9.293 5.354 6.646a.5.5 0 1 0-.708.708l3 3a.5.5 0 0 0 .708 0l7-7z\"/></svg><span>T\\u00e9l\\u00e9charg\\u00e9 !</span>';
+                    setTimeout(function() {
+                      btn.innerHTML = origHTML;
+                      btn.style.pointerEvents = '';
+                    }, 2500);
+                  })
+                  .catch(function(err) {
+                    tryNext(index + 1);
+                  });
+              }
+
+              tryNext(0);
+            }
+
+            document.addEventListener('click', function(e) {
+              var btn = e.target && e.target.closest ? e.target.closest('#export-download_report') : null;
+              if (!btn) return;
+              e.preventDefault();
+              e.stopPropagation();
+              downloadReportWithFeedback(btn);
+            }, true);
+
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', syncReportElements);
+            } else {
+              syncReportElements();
+            }
+            setTimeout(syncReportElements, 500);
+            setTimeout(syncReportElements, 2000);
+          })();
+        ")),
         downloadButton(
           ns("download_data"),
           label = tags$span(
@@ -54,12 +177,13 @@ export_ui <- function(id) {
           tags$dl(
             tags$dt("Rapport HTML"),
             tags$dd(
-              "Télécharge le rapport Quarto complet et autonome (Alert_performance_report.html) incluant les graphiques interactifs, ",
+              "Télécharge le rapport Quarto complet et autonome (Alert_performance_report.html, 5.4 Mo) incluant les graphiques interactifs, ",
               "les tableaux de seuils et l'évaluation de performance globale et par zone de santé. ",
               tags$span(
                 class = "text-muted",
                 "(Disponible également en ",
                 tags$a(
+                  id = ns("alt_report_link"),
                   href = "Alert_performance_report.html",
                   download = "Alert_performance_report.html",
                   target = "_blank",
@@ -352,6 +476,7 @@ export_server <- function(id, filters) {
       filename = function() {
         "Alert_performance_report.html"
       },
+      contentType = "text/html; charset=utf-8",
       content = function(file) {
         target_dir <- if (exists("app_dir", inherits = TRUE)) app_dir else NULL
         report_html <- find_alert_report_html(target_dir)
@@ -370,6 +495,7 @@ export_server <- function(id, filters) {
       filename = function() {
         paste0("BVD_Alert_Data_", Sys.Date(), ".xlsx")
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         trends_dat <- filtered_trends_data()
         synth_dat  <- filtered_synth_data()
@@ -412,10 +538,51 @@ export_server <- function(id, filters) {
       filename = function() {
         paste0("BVD_Alert_Trends_", Sys.Date(), ".csv")
       },
+      contentType = "text/csv; charset=utf-8",
       content = function(file) {
         readr::write_csv(filtered_trends_data(), file)
       }
     )
+
+    # --- Desktop Local Save & External Browser Observers ---------------------
+    observeEvent(input$report_download_requested, {
+      target_dir <- if (exists("app_dir", inherits = TRUE)) app_dir else NULL
+      report_html <- find_alert_report_html(target_dir)
+      home_downloads <- file.path(Sys.getenv("HOME"), "Downloads")
+
+      if (!is.null(report_html) && file.exists(report_html) && dir.exists(home_downloads)) {
+        dest_path <- file.path(home_downloads, "Alert_performance_report.html")
+        file.copy(report_html, dest_path, overwrite = TRUE)
+        showNotification(
+          ui = tags$div(
+            tags$strong("Rapport sauvegardé avec succès !"),
+            tags$p("Une copie a été enregistrée dans vos Téléchargements :", tags$br(), tags$code(dest_path))
+          ),
+          type = "message",
+          duration = 6
+        )
+      }
+    }, ignoreInit = TRUE)
+
+    observeEvent(input$open_browser_report, {
+      target_dir <- if (exists("app_dir", inherits = TRUE)) app_dir else NULL
+      report_html <- find_alert_report_html(target_dir)
+
+      if (!is.null(report_html) && file.exists(report_html)) {
+        utils::browseURL(normalizePath(report_html))
+        showNotification(
+          "Rapport ouvert dans votre navigateur par défaut.",
+          type = "message",
+          duration = 4
+        )
+      } else {
+        showNotification(
+          "Rapport non trouvé sur le disque.",
+          type = "warning",
+          duration = 4
+        )
+      }
+    })
   })
 }
 
@@ -459,6 +626,10 @@ find_alert_report_html <- function(app_directory = NULL) {
 
   existing_primary <- primary_candidates[!is.na(primary_candidates) & file.exists(primary_candidates)]
   if (length(existing_primary) > 0L) {
+    valid_primary <- existing_primary[file.info(existing_primary)$size > 1000000L]
+    if (length(valid_primary) > 0L) {
+      existing_primary <- valid_primary
+    }
     if (length(existing_primary) > 1L) {
       mtimes <- file.info(existing_primary)$mtime
       best_idx <- which.max(mtimes)
@@ -500,10 +671,41 @@ find_report_template_html <- find_alert_report_html
 # --- Fallback simple HTML report generator -----------------------------------
 write_simple_html_report <- function(file, trends_dat, synth_dat, filters) {
   report_date <- Sys.Date()
-  n_hz <- n_distinct(trends_dat$zone_sante_notification)
-  total_alerts <- sum(trends_dat$total_alerts, na.rm = TRUE)
+  n_hz <- if (!is.null(trends_dat) && "zone_sante_notification" %in% names(trends_dat)) {
+    n_distinct(trends_dat$zone_sante_notification)
+  } else 0L
+  total_alerts <- if (!is.null(trends_dat) && "total_alerts" %in% names(trends_dat)) {
+    sum(trends_dat$total_alerts, na.rm = TRUE)
+  } else 0L
+  n_weeks <- if (!is.null(trends_dat) && "week_start" %in% names(trends_dat)) {
+    n_distinct(trends_dat$week_start)
+  } else 0L
   date_start <- as.character(filters$date_range()[1])
   date_end   <- as.character(filters$date_range()[2])
+
+  adeq_df <- if (exists("recent_adequacy", envir = .GlobalEnv)) {
+    get("recent_adequacy", envir = .GlobalEnv)
+  } else if (!is.null(synth_dat) && "adequacy_category" %in% names(synth_dat)) {
+    synth_dat
+  } else {
+    data.frame(adequacy_category = character(0))
+  }
+
+  data_src <- if (exists("data_folder", envir = .GlobalEnv)) {
+    get("data_folder", envir = .GlobalEnv)
+  } else if (exists("output_base", envir = .GlobalEnv)) {
+    get("output_base", envir = .GlobalEnv)
+  } else {
+    "Operational pipeline"
+  }
+
+  adequacy_rows <- paste0(
+    sapply(c("Under-alerting", "Adequate", "Over-alerting"), function(cat) {
+      n <- if ("adequacy_category" %in% names(adeq_df)) sum(adeq_df$adequacy_category == cat, na.rm = TRUE) else 0L
+      paste0("<tr><td>", cat, "</td><td>", n, "</td></tr>")
+    }),
+    collapse = "\n"
+  )
 
   html_content <- paste0(
     "<!DOCTYPE html>
@@ -542,25 +744,19 @@ th { background-color: #f8f9fa; }
 <li>Total validated alerts (all HZs, all weeks): <strong>",
 formatC(total_alerts, big.mark = ","), "</strong></li>
 <li>Number of weeks in selection: <strong>",
-n_distinct(trends_dat$week_start), "</strong></li>
+n_weeks, "</strong></li>
 <li>Number of health zones: <strong>", n_hz, "</strong></li>
 </ul>
 
 <h2>Recent Adequacy Summary</h2>
 <table>
 <tr><th>Adequacy Category</th><th>Number of HZs</th></tr>
-", paste0(
-  sapply(c("Under-alerting", "Adequate", "Over-alerting"), function(cat) {
-    n <- sum(recent_adequacy$adequacy_category == cat, na.rm = TRUE)
-    paste0("<tr><td>", cat, "</td><td>", n, "</td></tr>")
-  }),
-  collapse = "\n"
-), "
+", adequacy_rows, "
 </table>
 
 <div class='footer'>
 <p>This report was generated by the BVD Alerts Dashboard Shiny application.</p>
-<p>Data source: ", data$data_dir, "</p>
+<p>Data source: ", data_src, "</p>
 <p>Methodology: Alert thresholds are computed using three approaches: (A) CMR-based expected deaths, ",
 "(B) Beni historical benchmark from EVD10, and (C) case-derived expectations via detection rates, ",
 "Rt, and SAR. The consensus threshold averages the relevant approaches.</p>

@@ -110,16 +110,24 @@ trends_ui <- function(id) {
         gap = "16px",
         card(
           card_header(
-            class = "d-flex justify-content-between align-items-center",
-            tags$span(
-              tags$i(class = "bi bi-graph-up me-2 text-primary"),
-              textOutput(ns("title_ensemble_alert"), inline = TRUE)
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+            div(
+              class = "card-header-title-block",
+              div(class = "card-icon-box icon-blue", tags$i(class = "bi bi-graph-up")),
+              div(
+                class = "card-title-text-group",
+                tags$span(class = "card-title-main", textOutput(ns("title_ensemble_alert"), inline = TRUE)),
+                tags$span(class = "card-title-sub", "Série chronologique hebdomadaire observée et intervalle du seuil médian (Ensemble)")
+              )
             ),
-            downloadButton(
-              ns("download_plot_alert_ensemble"),
-              label = "PNG",
-              class = "btn btn-sm btn-outline-primary py-0 px-2 fw-semibold",
-              title = "Télécharger le graphique en PNG (300 DPI)"
+            div(
+              class = "card-header-action-group",
+              downloadButton(
+                ns("download_plot_alert_ensemble"),
+                label = "PNG",
+                class = "btn btn-sm btn-outline-primary py-0 px-2 fw-semibold",
+                title = "Télécharger le graphique en PNG (300 DPI)"
+              )
             )
           ),
           card_body(
@@ -153,16 +161,24 @@ trends_ui <- function(id) {
         ),
         card(
           card_header(
-            class = "d-flex justify-content-between align-items-center",
-            tags$span(
-              tags$i(class = "bi bi-bar-chart-fill me-2 text-primary"),
-              textOutput(ns("title_ensemble_adeq"), inline = TRUE)
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+            div(
+              class = "card-header-title-block",
+              div(class = "card-icon-box icon-purple", tags$i(class = "bi bi-bar-chart-fill")),
+              div(
+                class = "card-title-text-group",
+                tags$span(class = "card-title-main", textOutput(ns("title_ensemble_adeq"), inline = TRUE)),
+                tags$span(class = "card-title-sub", "Évaluation de l'adéquation au seuil épidémiologique (> 75 % = adéquat)")
+              )
             ),
-            downloadButton(
-              ns("download_plot_adeq_ensemble"),
-              label = "PNG",
-              class = "btn btn-sm btn-outline-primary py-0 px-2 fw-semibold",
-              title = "Télécharger le graphique en PNG (300 DPI)"
+            div(
+              class = "card-header-action-group",
+              downloadButton(
+                ns("download_plot_adeq_ensemble"),
+                label = "PNG",
+                class = "btn btn-sm btn-outline-primary py-0 px-2 fw-semibold",
+                title = "Télécharger le graphique en PNG (300 DPI)"
+              )
             )
           ),
           card_body(
@@ -184,38 +200,68 @@ trends_ui <- function(id) {
           gap = "16px",
           card(
             card_header(
-              class = "d-flex justify-content-between align-items-center",
-              tags$span(
-                tags$i(class = "bi bi-table me-2 text-secondary"),
-                "Tableau 1 — Alertes, seuils et performance (Ensemble)"
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+              div(
+                class = "card-header-title-block",
+                div(class = "card-icon-box icon-slate", tags$i(class = "bi bi-table")),
+                div(
+                  class = "card-title-text-group",
+                  tags$span(class = "card-title-main", "Tableau 1 — Alertes, seuils et performance (Ensemble)"),
+                  tags$span(class = "card-title-sub", "Suivi hebdomadaire des alertes, seuils de consensus et indices d'adéquation")
+                )
               ),
-              downloadButton(
-                ns("download_table1_ensemble"),
-                label = "XLSX",
-                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-                title = "Télécharger le tableau au format Excel (.xlsx)"
+              div(
+                class = "card-header-action-group",
+                downloadButton(
+                  ns("download_table1_ensemble"),
+                  label = "XLSX",
+                  class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                  title = "Télécharger le tableau au format Excel (.xlsx)"
+                )
               )
             ),
             card_body(
-              DTOutput(ns("table1_ensemble_html"))
+              DTOutput(ns("table1_ensemble_html")),
+              tags$div(
+                class = "table-publication-note",
+                tags$strong("Note : "),
+                "Seuil attendu = seuil médian issu des modèles de consensus. ",
+                "Performance = alertes observées / seuil attendu. ",
+                "AAI = Indice moyen d'adéquation (rouge : < 0,75 sous-alerte ; vert : 0,75–1,25 adéquat ; jaune : > 1,25 sur-alerte)."
+              )
             )
           ),
           card(
             card_header(
-              class = "d-flex justify-content-between align-items-center",
-              tags$span(
-                tags$i(class = "bi bi-calculator me-2 text-secondary"),
-                "Tableau 2 — Paramètres du modèle (β, nowcast, détection)"
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+              div(
+                class = "card-header-title-block",
+                div(class = "card-icon-box icon-slate", tags$i(class = "bi bi-calculator")),
+                div(
+                  class = "card-title-text-group",
+                  tags$span(class = "card-title-main", "Tableau 2 — Paramètres du modèle (β, nowcast, détection)"),
+                  tags$span(class = "card-title-sub", "Paramètres épidémiologiques de transmission, cas récents corrigés et taux de détection")
+                )
               ),
-              downloadButton(
-                ns("download_table2_ensemble"),
-                label = "XLSX",
-                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-                title = "Télécharger le tableau au format Excel (.xlsx)"
+              div(
+                class = "card-header-action-group",
+                downloadButton(
+                  ns("download_table2_ensemble"),
+                  label = "XLSX",
+                  class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                  title = "Télécharger le tableau au format Excel (.xlsx)"
+                )
               )
             ),
             card_body(
-              DTOutput(ns("table2_ensemble_html"))
+              DTOutput(ns("table2_ensemble_html")),
+              tags$div(
+                class = "table-publication-note",
+                tags$strong("Note : "),
+                "Coefficients β = multiplicateurs de transmission (cas et décès). ",
+                "Nowcast = estimation corrigée pour les retards de notification. ",
+                "Cas vrais récents estimés = cas confirmés récents / taux de détection combiné."
+              )
             )
           )
         )
@@ -276,38 +322,65 @@ trends_ui <- function(id) {
           gap = "16px",
           card(
             card_header(
-              class = "d-flex justify-content-between align-items-center",
-              tags$span(
-                tags$i(class = "bi bi-table me-2 text-secondary"),
-                textOutput(ns("map_title_table1"), inline = TRUE)
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+              div(
+                class = "card-header-title-block",
+                div(class = "card-icon-box icon-slate", tags$i(class = "bi bi-table")),
+                div(
+                  class = "card-title-text-group",
+                  tags$span(class = "card-title-main", textOutput(ns("map_title_table1"), inline = TRUE)),
+                  tags$span(class = "card-title-sub", textOutput(ns("map_subtitle_table1"), inline = TRUE))
+                )
               ),
-              downloadButton(
-                ns("download_map_table1"),
-                label = "XLSX",
-                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-                title = "Télécharger le tableau au format Excel (.xlsx)"
+              div(
+                class = "card-header-action-group",
+                downloadButton(
+                  ns("download_map_table1"),
+                  label = "XLSX",
+                  class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                  title = "Télécharger le tableau au format Excel (.xlsx)"
+                )
               )
             ),
             card_body(
-              DTOutput(ns("map_table1_html"))
+              DTOutput(ns("map_table1_html")),
+              tags$div(
+                class = "table-publication-note",
+                tags$strong("Note : "),
+                "Série chronologique spécifique à la zone de santé sélectionnée. ",
+                "Seuils médians de consensus et indices d'adéquation (rouge : < 0,75 sous-alerte ; vert : 0,75–1,25 adéquat ; jaune : > 1,25 sur-alerte)."
+              )
             )
           ),
           card(
             card_header(
-              class = "d-flex justify-content-between align-items-center",
-              tags$span(
-                tags$i(class = "bi bi-calculator me-2 text-secondary"),
-                textOutput(ns("map_title_table2"), inline = TRUE)
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+              div(
+                class = "card-header-title-block",
+                div(class = "card-icon-box icon-slate", tags$i(class = "bi bi-calculator")),
+                div(
+                  class = "card-title-text-group",
+                  tags$span(class = "card-title-main", textOutput(ns("map_title_table2"), inline = TRUE)),
+                  tags$span(class = "card-title-sub", textOutput(ns("map_subtitle_table2"), inline = TRUE))
+                )
               ),
-              downloadButton(
-                ns("download_map_table2"),
-                label = "XLSX",
-                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-                title = "Télécharger le tableau au format Excel (.xlsx)"
+              div(
+                class = "card-header-action-group",
+                downloadButton(
+                  ns("download_map_table2"),
+                  label = "XLSX",
+                  class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                  title = "Télécharger le tableau au format Excel (.xlsx)"
+                )
               )
             ),
             card_body(
-              DTOutput(ns("map_table2_html"))
+              DTOutput(ns("map_table2_html")),
+              tags$div(
+                class = "table-publication-note",
+                tags$strong("Note : "),
+                "Paramètres épidémiologiques et d'ajustement spécifiques à la zone sélectionnée (coefficients β, nowcasting et taux de détection)."
+              )
             )
           )
         )
@@ -319,16 +392,24 @@ trends_ui <- function(id) {
         gap = "16px",
         card(
           card_header(
-            class = "d-flex justify-content-between align-items-center",
-            tags$span(
-              tags$i(class = "bi bi-graph-up me-2 text-success"),
-              textOutput(ns("title_hz_alert"), inline = TRUE)
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+            div(
+              class = "card-header-title-block",
+              div(class = "card-icon-box icon-green", tags$i(class = "bi bi-graph-up")),
+              div(
+                class = "card-title-text-group",
+                tags$span(class = "card-title-main", textOutput(ns("title_hz_alert"), inline = TRUE)),
+                tags$span(class = "card-title-sub", textOutput(ns("subtitle_hz_alert"), inline = TRUE))
+              )
             ),
-            downloadButton(
-              ns("download_plot_alert_hz"),
-              label = "PNG",
-              class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-              title = "Télécharger le graphique en PNG (300 DPI)"
+            div(
+              class = "card-header-action-group",
+              downloadButton(
+                ns("download_plot_alert_hz"),
+                label = "PNG",
+                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                title = "Télécharger le graphique en PNG (300 DPI)"
+              )
             )
           ),
           card_body(
@@ -362,16 +443,24 @@ trends_ui <- function(id) {
         ),
         card(
           card_header(
-            class = "d-flex justify-content-between align-items-center",
-            tags$span(
-              tags$i(class = "bi bi-bar-chart-fill me-2 text-success"),
-              textOutput(ns("title_hz_adeq"), inline = TRUE)
+            class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+            div(
+              class = "card-header-title-block",
+              div(class = "card-icon-box icon-purple", tags$i(class = "bi bi-bar-chart-fill")),
+              div(
+                class = "card-title-text-group",
+                tags$span(class = "card-title-main", textOutput(ns("title_hz_adeq"), inline = TRUE)),
+                tags$span(class = "card-title-sub", textOutput(ns("subtitle_hz_adeq"), inline = TRUE))
+              )
             ),
-            downloadButton(
-              ns("download_plot_adeq_hz"),
-              label = "PNG",
-              class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-              title = "Télécharger le graphique en PNG (300 DPI)"
+            div(
+              class = "card-header-action-group",
+              downloadButton(
+                ns("download_plot_adeq_hz"),
+                label = "PNG",
+                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                title = "Télécharger le graphique en PNG (300 DPI)"
+              )
             )
           ),
           card_body(
@@ -427,42 +516,177 @@ trends_ui <- function(id) {
           gap = "16px",
           card(
             card_header(
-              class = "d-flex justify-content-between align-items-center",
-              tags$span(
-                tags$i(class = "bi bi-table me-2 text-secondary"),
-                textOutput(ns("title_table1"), inline = TRUE)
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+              div(
+                class = "card-header-title-block",
+                div(class = "card-icon-box icon-slate", tags$i(class = "bi bi-table")),
+                div(
+                  class = "card-title-text-group",
+                  tags$span(class = "card-title-main", textOutput(ns("title_table1"), inline = TRUE)),
+                  tags$span(class = "card-title-sub", textOutput(ns("subtitle_table1"), inline = TRUE))
+                )
               ),
-              downloadButton(
-                ns("download_table1_hz"),
-                label = "XLSX",
-                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-                title = "Télécharger le tableau au format Excel (.xlsx)"
+              div(
+                class = "card-header-action-group",
+                downloadButton(
+                  ns("download_table1_hz"),
+                  label = "XLSX",
+                  class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                  title = "Télécharger le tableau au format Excel (.xlsx)"
+                )
               )
             ),
             card_body(
-              DTOutput(ns("table1_html"))
+              DTOutput(ns("table1_html")),
+              tags$div(
+                class = "table-publication-note",
+                tags$strong("Note : "),
+                "Comparatif transversal de toutes les zones actives pour la fenêtre sélectionnée. ",
+                "Trié par indice AAI croissant. Performance : rouge (< 0,75 sous-alerte), vert (0,75–1,25 adéquat), jaune (> 1,25 sur-alerte)."
+              )
             )
           ),
           card(
             card_header(
-              class = "d-flex justify-content-between align-items-center",
-              tags$span(
-                tags$i(class = "bi bi-calculator me-2 text-secondary"),
-                textOutput(ns("title_table2"), inline = TRUE)
+              class = "d-flex justify-content-between align-items-center flex-wrap gap-2 py-2",
+              div(
+                class = "card-header-title-block",
+                div(class = "card-icon-box icon-slate", tags$i(class = "bi bi-calculator")),
+                div(
+                  class = "card-title-text-group",
+                  tags$span(class = "card-title-main", textOutput(ns("title_table2"), inline = TRUE)),
+                  tags$span(class = "card-title-sub", textOutput(ns("subtitle_table2"), inline = TRUE))
+                )
               ),
-              downloadButton(
-                ns("download_table2_hz"),
-                label = "XLSX",
-                class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
-                title = "Télécharger le tableau au format Excel (.xlsx)"
+              div(
+                class = "card-header-action-group",
+                downloadButton(
+                  ns("download_table2_hz"),
+                  label = "XLSX",
+                  class = "btn btn-sm btn-outline-success py-0 px-2 fw-semibold",
+                  title = "Télécharger le tableau au format Excel (.xlsx)"
+                )
               )
             ),
             card_body(
-              DTOutput(ns("table2_html"))
+              DTOutput(ns("table2_html")),
+              tags$div(
+                class = "table-publication-note",
+                tags$strong("Note : "),
+                "Coefficients épidémiologiques et sous-détection pour les zones actives. ",
+                "Nowcast = estimation corrigée pour les retards de notification. Cas vrais récents = projection ajustée de l'incidence."
+              )
             )
           )
         )
-      )
+      ),
+
+      # Client-side Plotly PNG export and download link sanitizer
+      tags$script(HTML("
+        (function() {
+          function sanitizeDownloadLinks() {
+            var links = document.querySelectorAll('a.shiny-download-link');
+            links.forEach(function(a) {
+              if (a.getAttribute('target') === '_blank') {
+                a.removeAttribute('target');
+              }
+            });
+          }
+
+          function handlePlotlyExport(btn, plotDivId, filename) {
+            var plotEl = document.getElementById(plotDivId);
+            if (!plotEl) return false;
+            var graphDiv = plotEl.querySelector('.js-plotly-plot') || plotEl;
+            if (!window.Plotly || typeof window.Plotly.downloadImage !== 'function') {
+              return false;
+            }
+
+            var origHTML = btn.innerHTML;
+            btn.innerHTML = '<span class=\"spinner-border spinner-border-sm me-1\" role=\"status\" aria-hidden=\"true\"></span>Export...';
+            btn.style.pointerEvents = 'none';
+
+            window.Plotly.downloadImage(graphDiv, {
+              format: 'png',
+              width: 1400,
+              height: 800,
+              filename: filename
+            }).then(function() {
+              btn.innerHTML = '<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"14\" height=\"14\" fill=\"currentColor\" class=\"bi bi-check-lg me-1\" viewBox=\"0 0 16 16\"><path d=\"M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022Z\"/></svg>PNG';
+              setTimeout(function() {
+                btn.innerHTML = origHTML;
+                btn.style.pointerEvents = '';
+              }, 2000);
+            }).catch(function(err) {
+              console.warn('Plotly export fallback:', err);
+              btn.innerHTML = origHTML;
+              btn.style.pointerEvents = '';
+              var href = btn.getAttribute('href');
+              if (href && href !== '#' && href !== '') {
+                window.location.assign(href);
+              }
+            });
+            return true;
+          }
+
+          document.addEventListener('click', function(e) {
+            var btn = e.target && e.target.closest ? e.target.closest('a.shiny-download-link') : null;
+            if (!btn) return;
+
+            btn.removeAttribute('target');
+            var btnId = btn.id || '';
+            var todayStr = new Date().toISOString().slice(0, 10);
+
+            if (btnId === 'trends-download_plot_alert_ensemble') {
+              var isDeath = !!document.querySelector('#trends-ensemble_alert_metric .nav-link.active[data-value=\"death\"]') ||
+                            !!document.querySelector('#trends-ensemble_alert_metric a.active[data-value=\"death\"]');
+              var targetPlotId = isDeath ? 'trends-ip_death_ensemble' : 'trends-ip_case_ensemble';
+              var filename = 'BVD_Tendances_' + (isDeath ? 'Deces' : 'Cas') + '_Ensemble_' + todayStr;
+              if (handlePlotlyExport(btn, targetPlotId, filename)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            } else if (btnId === 'trends-download_plot_adeq_ensemble') {
+              var filename = 'BVD_Adequation_Ensemble_' + todayStr;
+              if (handlePlotlyExport(btn, 'trends-p_adeq_ensemble', filename)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            } else if (btnId === 'trends-download_plot_alert_hz') {
+              var hzSelect = document.getElementById('trends-selected_hz');
+              var hzName = (hzSelect && hzSelect.value) ? hzSelect.value.replace(/[^A-Za-z0-9_]+/g, '_') : 'Zone_sante';
+              var isDeathHz = !!document.querySelector('#trends-hz_alert_metric .nav-link.active[data-value=\"death\"]') ||
+                              !!document.querySelector('#trends-hz_alert_metric a.active[data-value=\"death\"]');
+              var targetPlotId = isDeathHz ? 'trends-per_hz_death_interactive' : 'trends-per_hz_case_interactive';
+              var filename = 'BVD_Tendances_' + (isDeathHz ? 'Deces' : 'Cas') + '_' + hzName + '_' + todayStr;
+              if (handlePlotlyExport(btn, targetPlotId, filename)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            } else if (btnId === 'trends-download_plot_adeq_hz') {
+              var hzSelect = document.getElementById('trends-selected_hz');
+              var hzName = (hzSelect && hzSelect.value) ? hzSelect.value.replace(/[^A-Za-z0-9_]+/g, '_') : 'Zone_sante';
+              var filename = 'BVD_Adequation_' + hzName + '_' + todayStr;
+              if (handlePlotlyExport(btn, 'trends-p_adeq_hz', filename)) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            } else if (btnId.indexOf('download_table') !== -1 || btnId.indexOf('download_map_table') !== -1) {
+              var origHTML = btn.innerHTML;
+              btn.innerHTML = '<span class=\"spinner-border spinner-border-sm me-1\" role=\"status\" aria-hidden=\"true\"></span>' + origHTML;
+              setTimeout(function() {
+                btn.innerHTML = origHTML;
+              }, 2500);
+            }
+          }, true);
+
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', sanitizeDownloadLinks);
+          } else {
+            sanitizeDownloadLinks();
+          }
+          setInterval(sanitizeDownloadLinks, 2000);
+        })();
+      "))
     )
   )
 }
@@ -598,7 +822,10 @@ trends_server <- function(id, filters = NULL) {
       render_scrollable_dt(
         df = df,
         col_names = unname(table1_ensemble_labels_fr[names(df)]),
-        num_cols_2 = c("case_adequacy", "death_adequacy", "aai", "Alert_case_threshold", "Alert_death_threshold")
+        num_cols_0 = c("case_alerts", "death_alerts", "total_alerts"),
+        num_cols_1 = c("Alert_case_threshold", "Alert_death_threshold"),
+        num_cols_2 = c("case_adequacy", "death_adequacy", "aai"),
+        adequacy_cols = c("case_adequacy", "death_adequacy", "aai")
       )
     })
 
@@ -608,6 +835,7 @@ trends_server <- function(id, filters = NULL) {
       render_scrollable_dt(
         df = df,
         col_names = unname(table2_ensemble_labels_fr[names(df)]),
+        num_cols_0 = c("n_recent_confirmed", "n_recent_confirmed_nowcast"),
         num_cols_1 = c("estimated_true_cases_recent"),
         num_cols_3 = c("beta_c", "beta_d", "detection_rate_adj")
       )
@@ -623,6 +851,11 @@ trends_server <- function(id, filters = NULL) {
       alert_trend_title_fr(hz_alert_metric(), hz = hz)
     })
 
+    output$subtitle_hz_alert <- renderText({
+      hz <- selected_hz_value() %||% "Zone de santé"
+      paste0("Alertes hebdomadaires observées vs. seuils attendus : ", hz)
+    })
+
     output$title_hz_adeq <- renderText({
       hz <- selected_hz_value() %||% "Zone de santé"
       metric_label <- switch(
@@ -634,6 +867,11 @@ trends_server <- function(id, filters = NULL) {
       paste0("Performance des ", metric_label, " : ", hz)
     })
 
+    output$subtitle_hz_adeq <- renderText({
+      hz <- selected_hz_value() %||% "Zone de santé"
+      paste0("Adéquation hebdomadaire par rapport au seuil critique de 75 % : ", hz)
+    })
+
     output$map_title_table1 <- renderText({
       paste0(
         "Tableau 1 — Alertes, seuils et performance : ",
@@ -641,11 +879,21 @@ trends_server <- function(id, filters = NULL) {
       )
     })
 
+    output$map_subtitle_table1 <- renderText({
+      hz <- selected_hz_value() %||% "Zone de santé"
+      paste0("Série temporelle longitudinale spécifique : ", hz)
+    })
+
     output$map_title_table2 <- renderText({
       paste0(
         "Tableau 2 — Paramètres du modèle : ",
         selected_hz_value() %||% "Zone de santé"
       )
+    })
+
+    output$map_subtitle_table2 <- renderText({
+      hz <- selected_hz_value() %||% "Zone de santé"
+      paste0("Paramètres β, cas nowcastés et taux de détection : ", hz)
     })
 
     # 3a. Graphique de gauche : per_hz_case_interactive (série temporelle complète)
@@ -708,10 +956,10 @@ trends_server <- function(id, filters = NULL) {
       render_scrollable_dt(
         df = df,
         col_names = unname(table1_ensemble_labels_fr[names(df)]),
-        num_cols_2 = c(
-          "case_adequacy", "death_adequacy", "aai",
-          "Alert_case_threshold", "Alert_death_threshold"
-        )
+        num_cols_0 = c("case_alerts", "death_alerts", "total_alerts"),
+        num_cols_1 = c("Alert_case_threshold", "Alert_death_threshold"),
+        num_cols_2 = c("case_adequacy", "death_adequacy", "aai"),
+        adequacy_cols = c("case_adequacy", "death_adequacy", "aai")
       )
     })
 
@@ -724,6 +972,7 @@ trends_server <- function(id, filters = NULL) {
       render_scrollable_dt(
         df = df,
         col_names = unname(table2_ensemble_labels_fr[names(df)]),
+        num_cols_0 = c("n_recent_confirmed", "n_recent_confirmed_nowcast"),
         num_cols_1 = c("estimated_true_cases_recent"),
         num_cols_3 = c("beta_c", "beta_d", "detection_rate_adj")
       )
@@ -736,10 +985,20 @@ trends_server <- function(id, filters = NULL) {
       paste0("Tableau 1 — Alertes, seuils et performance (Fenêtre du ", win_label, ")")
     })
 
+    output$subtitle_table1 <- renderText({
+      win <- input$table_time_window %||% max(all_time_windows)
+      paste0("Comparatif transversal de toutes les zones actives pour la semaine du ", format(as.Date(win), "%d/%m/%Y"))
+    })
+
     output$title_table2 <- renderText({
       win <- input$table_time_window %||% max(all_time_windows)
       win_label <- format(as.Date(win), "%d %b %Y")
       paste0("Tableau 2 — Paramètres du modèle (Fenêtre du ", win_label, ")")
+    })
+
+    output$subtitle_table2 <- renderText({
+      win <- input$table_time_window %||% max(all_time_windows)
+      paste0("Paramètres β, cas nowcastés et taux de détection pour la semaine du ", format(as.Date(win), "%d/%m/%Y"))
     })
 
     # 4a. Tableau 1 par zone de santé (filtré par la fenêtre sélectionnée)
@@ -749,7 +1008,10 @@ trends_server <- function(id, filters = NULL) {
       render_scrollable_dt(
         df = df,
         col_names = unname(table1_labels_fr[names(df)]),
-        num_cols_2 = c("case_adequacy", "death_adequacy", "aai", "Alert_case_threshold", "Alert_death_threshold")
+        num_cols_0 = c("case_alerts", "death_alerts", "total_alerts"),
+        num_cols_1 = c("Alert_case_threshold", "Alert_death_threshold"),
+        num_cols_2 = c("case_adequacy", "death_adequacy", "aai"),
+        adequacy_cols = c("case_adequacy", "death_adequacy", "aai")
       )
     })
 
@@ -760,6 +1022,7 @@ trends_server <- function(id, filters = NULL) {
       render_scrollable_dt(
         df = df,
         col_names = unname(table2_labels_fr[names(df)]),
+        num_cols_0 = c("n_recent_confirmed", "n_recent_confirmed_nowcast"),
         num_cols_1 = c("estimated_true_cases_recent"),
         num_cols_3 = c("beta_c", "beta_d", "detection_rate_adj")
       )
@@ -781,6 +1044,7 @@ trends_server <- function(id, filters = NULL) {
           ".png"
         )
       },
+      contentType = "image/png",
       content = function(file) {
         metric <- ensemble_alert_metric()
         p <- plot_alert_trends(
@@ -798,6 +1062,7 @@ trends_server <- function(id, filters = NULL) {
       filename = function() {
         paste0("BVD_Adequation_Ensemble_", ensemble_alert_metric(), "_", Sys.Date(), ".png")
       },
+      contentType = "image/png",
       content = function(file) {
         p <- plot_adequacy_stacked(
           data = trends_smooth_adeq,
@@ -823,6 +1088,7 @@ trends_server <- function(id, filters = NULL) {
           ".png"
         )
       },
+      contentType = "image/png",
       content = function(file) {
         hz <- selected_hz_value() %||% all_hz_individual[1]
         metric <- hz_alert_metric()
@@ -850,6 +1116,7 @@ trends_server <- function(id, filters = NULL) {
           ".png"
         )
       },
+      contentType = "image/png",
       content = function(file) {
         hz <- selected_hz_value() %||% all_hz_individual[1]
         p <- plot_adequacy_stacked(
@@ -866,6 +1133,7 @@ trends_server <- function(id, filters = NULL) {
       filename = function() {
         paste0("BVD_Tableau1_Ensemble_", Sys.Date(), ".xlsx")
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         df <- get_table1_ensemble_df(trends_smooth_adeq)
         df_export <- rename_df_fr(df, table1_ensemble_labels_fr)
@@ -878,6 +1146,7 @@ trends_server <- function(id, filters = NULL) {
       filename = function() {
         paste0("BVD_Tableau2_Parametres_Ensemble_", Sys.Date(), ".xlsx")
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         df <- get_table2_ensemble_df(intermediate_params)
         df_export <- rename_df_fr(df, table2_ensemble_labels_fr)
@@ -891,6 +1160,7 @@ trends_server <- function(id, filters = NULL) {
         win <- input$table_time_window %||% max(all_time_windows)
         paste0("BVD_Tableau1_Zones_Fenetre_", win, ".xlsx")
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         win <- input$table_time_window %||% max(all_time_windows)
         df <- get_table1_hz_df(trends_smooth_adeq, intermediate_params, time_key = win)
@@ -905,6 +1175,7 @@ trends_server <- function(id, filters = NULL) {
         win <- input$table_time_window %||% max(all_time_windows)
         paste0("BVD_Tableau2_Parametres_Zones_Fenetre_", win, ".xlsx")
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         win <- input$table_time_window %||% max(all_time_windows)
         df <- get_table2_hz_df(intermediate_params, trends_smooth_adeq, time_key = win)
@@ -924,6 +1195,7 @@ trends_server <- function(id, filters = NULL) {
           ".xlsx"
         )
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         df <- get_table1_selected_hz_df(trends_smooth_adeq, selected_hz_value())
         df_export <- rename_df_fr(df, table1_ensemble_labels_fr)
@@ -942,6 +1214,7 @@ trends_server <- function(id, filters = NULL) {
           ".xlsx"
         )
       },
+      contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       content = function(file) {
         df <- get_table2_selected_hz_df(
           intermediate_params,

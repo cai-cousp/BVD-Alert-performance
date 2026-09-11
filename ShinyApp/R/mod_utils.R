@@ -2,6 +2,8 @@
 # BVD Alerts App — Shared utilities: theme, filter module, helpers
 # =============================================================================
 
+
+
 # --- Theme configuration -----------------------------------------------------
 create_app_theme <- function() {
   bs_theme(
@@ -191,29 +193,152 @@ approach_colors <- c(
   "Consensus"                   = "#6C757D"
 )
 
-# --- DT datatable scrollable helper (continuous scrolling, no row limits) ----
+# --- DT datatable scrollable helper (publication-ready style) ----------------
 render_scrollable_dt <- function(df, col_names = NULL, title = NULL,
                                  scrollY = "350px",
-                                 num_cols_1 = NULL, num_cols_2 = NULL, num_cols_3 = NULL) {
+                                 num_cols_0 = NULL,
+                                 num_cols_1 = NULL, num_cols_2 = NULL, num_cols_3 = NULL,
+                                 adequacy_cols = NULL) {
+  if (is.null(df) || nrow(df) == 0L) {
+    return(DT::datatable(
+      data.frame(Message = "Aucune donnée disponible"),
+      rownames = FALSE,
+      options = list(dom = "t")
+    ))
+  }
+
+  df_display <- df
+
+  # Format threshold_time_key date into standard French publication date format (DD/MM/YYYY)
+  if ("threshold_time_key" %in% names(df_display)) {
+    raw_dates <- df_display$threshold_time_key
+    formatted_dates <- tryCatch(
+      format(as.Date(raw_dates), "%d/%m/%Y"),
+      error = function(e) raw_dates
+    )
+    if (!any(is.na(formatted_dates))) {
+      df_display$threshold_time_key <- formatted_dates
+    }
+  }
+
+  # Build column alignment definitions
+  col_classes <- vapply(df_display, function(x) {
+    if (is.numeric(x)) "numeric"
+    else if (inherits(x, "Date") || inherits(x, "POSIXt")) "date"
+    else "text"
+  }, character(1))
+
+  # Treat threshold_time_key as date column
+  if ("threshold_time_key" %in% names(df_display)) {
+    col_classes["threshold_time_key"] <- "date"
+  }
+
+  date_targets <- which(col_classes == "date") - 1L
+  num_targets  <- which(col_classes == "numeric") - 1L
+  text_targets <- which(col_classes == "text") - 1L
+
+  column_defs <- list()
+  if (length(date_targets) > 0L) {
+    column_defs[[length(column_defs) + 1L]] <- list(
+      className = "dt-center text-center",
+      targets = as.list(date_targets)
+    )
+  }
+  if (length(num_targets) > 0L) {
+    column_defs[[length(column_defs) + 1L]] <- list(
+      className = "dt-right text-end font-monospace-numbers",
+      targets = as.list(num_targets)
+    )
+  }
+  if (length(text_targets) > 0L) {
+    column_defs[[length(column_defs) + 1L]] <- list(
+      className = "dt-left text-start",
+      targets = as.list(text_targets)
+    )
+  }
+
   dt <- DT::datatable(
-    df,
+    df_display,
     rownames = FALSE,
     caption = title,
-    colnames = if (!is.null(col_names)) col_names else names(df),
+    colnames = if (!is.null(col_names)) col_names else names(df_display),
     options = list(
       paging = FALSE,
       scrollY = scrollY,
       scrollX = TRUE,
       scrollCollapse = TRUE,
       dom = "ti",
-      autoWidth = FALSE
+      autoWidth = FALSE,
+      columnDefs = column_defs
     ),
-    class = "compact stripe hover row-border",
+    class = "publication-table compact stripe hover",
     style = "bootstrap4"
   )
-  if (!is.null(num_cols_1)) dt <- DT::formatRound(dt, num_cols_1, digits = 1)
-  if (!is.null(num_cols_2)) dt <- DT::formatRound(dt, num_cols_2, digits = 2)
-  if (!is.null(num_cols_3)) dt <- DT::formatRound(dt, num_cols_3, digits = 3)
+
+  # Integer formatting with thousand separator
+  if (!is.null(num_cols_0)) {
+    valid_cols_0 <- intersect(num_cols_0, names(df_display))
+    if (length(valid_cols_0) > 0L) {
+      dt <- DT::formatRound(dt, valid_cols_0, digits = 0, interval = 3, mark = " ")
+    }
+  }
+
+  # 1 decimal formatting with thousand separator
+  if (!is.null(num_cols_1)) {
+    valid_cols_1 <- intersect(num_cols_1, names(df_display))
+    if (length(valid_cols_1) > 0L) {
+      dt <- DT::formatRound(dt, valid_cols_1, digits = 1, interval = 3, mark = " ")
+    }
+  }
+
+  # 2 decimals formatting
+  if (!is.null(num_cols_2)) {
+    valid_cols_2 <- intersect(num_cols_2, names(df_display))
+    if (length(valid_cols_2) > 0L) {
+      dt <- DT::formatRound(dt, valid_cols_2, digits = 2)
+    }
+  }
+
+  # 3 decimals formatting
+  if (!is.null(num_cols_3)) {
+    valid_cols_3 <- intersect(num_cols_3, names(df_display))
+    if (length(valid_cols_3) > 0L) {
+      dt <- DT::formatRound(dt, valid_cols_3, digits = 3)
+    }
+  }
+
+  # Adequacy performance color highlight (Under-alerting / Adequate / Over-alerting)
+  if (is.null(adequacy_cols)) {
+    adequacy_cols <- intersect(c("case_adequacy", "death_adequacy", "aai"), names(df_display))
+  } else {
+    adequacy_cols <- intersect(adequacy_cols, names(df_display))
+  }
+
+  if (length(adequacy_cols) > 0L) {
+    dt <- DT::formatStyle(
+      dt,
+      columns = adequacy_cols,
+      backgroundColor = DT::styleInterval(
+        c(0.75, 1.25),
+        c("rgba(220, 53, 69, 0.12)", "rgba(25, 135, 84, 0.12)", "rgba(255, 193, 7, 0.20)")
+      ),
+      color = DT::styleInterval(
+        c(0.75, 1.25),
+        c("#991b1b", "#166534", "#854d0e")
+      ),
+      fontWeight = "600"
+    )
+  }
+
+  # Emphasize first column (stub) and global AAI
+  first_col <- names(df_display)[1]
+  if (!is.null(first_col) && first_col %in% c("threshold_time_key", "zone_sante_notification")) {
+    dt <- DT::formatStyle(dt, columns = first_col, fontWeight = "600")
+  }
+  if ("aai" %in% names(df_display)) {
+    dt <- DT::formatStyle(dt, columns = "aai", fontWeight = "700")
+  }
+
   dt
 }
 

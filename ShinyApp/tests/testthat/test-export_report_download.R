@@ -114,3 +114,30 @@ test_that("export module downloadHandler serves Alert_performance_report.html wi
     expect_true(grepl("<!DOCTYPE html>|<html", first_line, ignore.case = TRUE))
   })
 })
+
+test_that("write_simple_html_report generates valid fallback HTML without missing variable errors", {
+  temp_out <- tempfile(fileext = ".html")
+  on.exit(unlink(temp_out), add = TRUE)
+
+  dummy_filters <- list(
+    date_range = function() c(as.Date("2026-01-01"), as.Date("2026-06-01")),
+    selected_hzs = function() character(0),
+    alert_level = function() "all",
+    adequacy_filter = function() c("adequate", "inadequate")
+  )
+
+  dummy_trends <- tibble::tibble(
+    zone_sante_notification = c("Zone A", "Zone B"),
+    week_start = c(as.Date("2026-01-01"), as.Date("2026-01-08")),
+    total_alerts = c(10L, 15L)
+  )
+  dummy_synth <- tibble::tibble(
+    zone_sante_notification = c("Zone A", "Zone B"),
+    adequacy_category = c("Adequate", "Under-alerting")
+  )
+
+  expect_no_error(write_simple_html_report(temp_out, dummy_trends, dummy_synth, dummy_filters))
+  expect_true(file.exists(temp_out))
+  content <- paste(readLines(temp_out, warn = FALSE), collapse = "\n")
+  expect_true(grepl("BVD Alert Dashboard Report", content))
+})

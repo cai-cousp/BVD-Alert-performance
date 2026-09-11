@@ -593,23 +593,27 @@ plot_alert_trends <- function(
     scale_x_date(breaks = unique_dates, date_labels = "%d-%m\n%Y") +
     scale_y_continuous(expand = expansion(mult = c(0, 0))) +
     labs(
-      title = sprintf("Tendances des %s vs seuils attendus", metric_title_label),
+      title = sprintf("Tendances des %s vs. seuils attendus", metric_title_label),
       subtitle = subtitle_text,
       x = "Semaine de notification (date de début)",
       y = y_label,
       caption = sprintf("Source : DHIS2 Tracker - %s", format_dmy(caption_date))
     ) +
-    #theme_minimal(base_size = 11) +
     theme(
       panel.background = element_blank(),
-      panel.grid.major = element_line(colour = "grey90", linewidth = 0.3),
-      #axis.ticks = element_line(colour = "grey50", linewidth = 0.3),
-      axis.line = element_line(colour = "grey50", linewidth = 0.3),
-      strip.text = element_text(face = "bold", size = rel(0.85)),
-      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = rel(0.75)),
+      panel.grid.major = element_line(colour = "grey92", linewidth = 0.3),
+      panel.grid.minor = element_blank(),
+      axis.line = element_line(colour = "grey40", linewidth = 0.4),
+      strip.text = element_text(face = "bold", size = rel(0.9)),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = rel(0.8)),
+      axis.text.y = element_text(size = rel(0.85)),
+      axis.title = element_text(face = "bold", size = rel(0.9)),
       legend.position = "top",
       legend.direction = "horizontal",
-      plot.title = element_text(face = "bold")
+      legend.title = element_text(face = "bold", size = rel(0.85)),
+      plot.title = element_text(face = "bold", size = rel(1.15), margin = margin(b = 4)),
+      plot.subtitle = element_text(size = rel(0.88), color = "grey30", margin = margin(b = 8)),
+      plot.caption = element_text(size = rel(0.75), color = "grey45", margin = margin(t = 6))
     )
 
   # Large-facet guard: warn but still render
@@ -1497,16 +1501,16 @@ plot_adequacy_stacked <- function(
       "Performance globale = (performance vivants + performance décès) / 2\n"
     ),
     "all"   = paste0(
-      "Performance of live alerts = case_alerts / case_alert_threshold\n",
-      "Performance of death alerts = death_alerts / death_alert_threshold\n",
-      "Overall performance = (performance of live alerts + performance of death alerts) / 2\n"
+      "Performance des alertes vivants = alertes_cas / seuil_cas\n",
+      "Performance des alertes décès = alertes_décès / seuil_décès\n",
+      "Performance globale = (performance vivants + performance décès) / 2\n"
     )
   )
   if (single_hz) {
     zone_label <- if (hz[[1L]] == "Ensemble de la zone affectée") {
-      "Affected area overall"
+      "Ensemble de la zone affectée"
     } else {
-      paste0("Health zone: ", hz[[1L]])
+      paste0("Zone de santé : ", hz[[1L]])
     }
     subtitle_text <- paste0(subtitle_text, "\n", zone_label)
   }
@@ -1548,13 +1552,16 @@ plot_adequacy_stacked <- function(
     theme(
       panel.grid.major.x = element_blank(),
       panel.grid.minor = element_blank(),
-      panel.grid.major.y = element_line(colour = "grey90", linewidth = 0.3),
-      axis.line = element_line(colour = "grey50", linewidth = 0.3),
-      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = rel(0.75)),
-      strip.text = element_text(face = "bold", size = rel(0.85)),
+      panel.grid.major.y = element_line(colour = "grey92", linewidth = 0.3),
+      axis.line = element_line(colour = "grey40", linewidth = 0.4),
+      axis.text.x = element_text(angle = 0, hjust = 0.5, vjust = 0.5, size = rel(0.8)),
+      axis.text.y = element_text(size = rel(0.85)),
+      axis.title = element_text(face = "bold", size = rel(0.9)),
+      strip.text = element_text(face = "bold", size = rel(0.9)),
       legend.position = "top",
       legend.direction = "horizontal",
-      plot.title = element_text(face = "bold")
+      plot.title = element_text(face = "bold", size = rel(1.15), margin = margin(b = 4)),
+      plot.caption = element_text(size = rel(0.75), color = "grey45", margin = margin(t = 6))
     )
 
   # Large-facet guard

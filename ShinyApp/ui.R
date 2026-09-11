@@ -115,6 +115,188 @@ ui <- tagList(
           padding: 1rem !important;
         }
       }
+
+      /* Card Title Block & Icons */
+      .card-header-title-block {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex: 1 1 auto;
+      }
+      .card-icon-box {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+      .card-icon-box.icon-blue {
+        background-color: #e0f2fe;
+        color: #0284c7;
+        border: 1px solid #bae6fd;
+      }
+      .card-icon-box.icon-green {
+        background-color: #dcfce7;
+        color: #16a34a;
+        border: 1px solid #bbf7d0;
+      }
+      .card-icon-box.icon-purple {
+        background-color: #f3e8ff;
+        color: #9333ea;
+        border: 1px solid #e9d5ff;
+      }
+      .card-icon-box.icon-slate {
+        background-color: #f1f5f9;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+      }
+      .card-title-text-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.12rem;
+      }
+      .card-title-main {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
+      }
+      .card-title-sub {
+        font-size: 0.78rem;
+        color: #64748b;
+        line-height: 1.35;
+        font-weight: 400;
+      }
+      .card-header-action-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+      }
+      .badge-context {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 0.25rem 0.6rem;
+        border-radius: 6px;
+        letter-spacing: 0.01em;
+      }
+
+      /* Publication Tables */
+      .dataTables_wrapper {
+        font-size: 0.84rem;
+        font-family: inherit;
+        margin-top: 0.25rem;
+      }
+      table.dataTable.publication-table,
+      table.publication-table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        border-top: 2px solid #cbd5e1 !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+        margin: 0.5rem 0 !important;
+      }
+      table.dataTable.publication-table thead th,
+      table.publication-table thead th {
+        font-weight: 700 !important;
+        font-size: 0.78rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.04em !important;
+        color: #334155 !important;
+        background-color: #f8fafc !important;
+        border-top: none !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+        border-left: none !important;
+        border-right: none !important;
+        padding: 0.65rem 0.75rem !important;
+        vertical-align: bottom !important;
+        white-space: nowrap !important;
+      }
+      table.dataTable.publication-table tbody td,
+      table.publication-table tbody td {
+        padding: 0.5rem 0.75rem !important;
+        border-top: none !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        border-left: none !important;
+        border-right: none !important;
+        vertical-align: middle !important;
+        color: #1e293b !important;
+        font-size: 0.83rem !important;
+      }
+      table.dataTable.publication-table,
+      table.dataTable.publication-table th,
+      table.dataTable.publication-table td,
+      table.dataTable.row-border tbody th,
+      table.dataTable.row-border tbody td {
+        border-left: none !important;
+        border-right: none !important;
+      }
+      .dataTables_scrollHead,
+      .dataTables_scrollHeadInner,
+      .dataTables_scrollHead table.dataTable,
+      .dataTables_scrollHead table.publication-table {
+        border-top: none !important;
+      }
+      .dataTables_scrollHead {
+        border-top: 2px solid #cbd5e1 !important;
+        border-bottom: 2px solid #cbd5e1 !important;
+      }
+      .dataTables_scrollBody {
+        border-bottom: 2px solid #cbd5e1 !important;
+      }
+      .dataTables_wrapper.no-footer .dataTables_scrollBody,
+      table.dataTable.no-footer {
+        border-bottom: 2px solid #cbd5e1 !important;
+      }
+      table.dataTable.publication-table.stripe tbody tr.odd,
+      table.publication-table.stripe tbody tr.odd {
+        background-color: #ffffff !important;
+      }
+      table.dataTable.publication-table.stripe tbody tr.even,
+      table.publication-table.stripe tbody tr.even {
+        background-color: #f8fafc !important;
+      }
+      table.dataTable.publication-table tbody tr:hover,
+      table.publication-table tbody tr:hover {
+        background-color: #f1f5f9 !important;
+      }
+      .font-monospace-numbers,
+      table.dataTable.publication-table td.dt-right,
+      table.dataTable.publication-table td.text-end {
+        font-variant-numeric: tabular-nums !important;
+        font-feature-settings: 'tnum' 1 !important;
+      }
+      table.dataTable.publication-table th.dt-right,
+      table.dataTable.publication-table td.dt-right {
+        text-align: right !important;
+      }
+      table.dataTable.publication-table th.dt-center,
+      table.dataTable.publication-table td.dt-center {
+        text-align: center !important;
+      }
+      table.dataTable.publication-table th.dt-left,
+      table.dataTable.publication-table td.dt-left {
+        text-align: left !important;
+      }
+      .table-publication-note {
+        font-size: 0.76rem;
+        color: #64748b;
+        line-height: 1.45;
+        margin-top: 0.65rem;
+        margin-bottom: 0.15rem;
+        padding: 0.45rem 0.75rem;
+        background-color: #f8fafc;
+        border-left: 3px solid #94a3b8;
+        border-radius: 0 0.35rem 0.35rem 0;
+      }
+      .table-publication-note strong {
+        color: #334155;
+        font-weight: 650;
+      }
     "))
   ),
 
@@ -125,11 +307,30 @@ ui <- tagList(
     # Frozen header centered at top of page
     div(
       class = "app-frozen-header",
-      h1(class = "app-frozen-title", "Analyse des tendances et performance des alertes de la MVE/B"),
-      p(
-        class = "app-frozen-subtitle text-muted mb-0",
-        "Suivi longitudinal des alertes de cas et de décès par rapport aux seuils attendus, ",
-        "avec évaluation de la performance (adéquation) au niveau global et par zone de santé."
+      div(
+        class = "d-flex justify-content-between align-items-center flex-wrap gap-2",
+        div(class = "header-spacer d-none d-lg-block", style = "width: 140px;"),
+        div(
+          class = "text-center flex-grow-1",
+          h1(class = "app-frozen-title", "Analyse des tendances et performance des alertes de la MVE/B"),
+          p(
+            class = "app-frozen-subtitle text-muted mb-0",
+            "Suivi longitudinal des alertes de cas et de décès par rapport aux seuils attendus, ",
+            "avec évaluation de la performance (adéquation) au niveau global et par zone de santé."
+          )
+        ),
+        div(
+          class = "header-actions text-end",
+          actionButton(
+            "header_open_browser",
+            label = tags$span(
+              tags$i(class = "bi bi-box-arrow-up-right me-1"),
+              "Navigateur externe"
+            ),
+            class = "btn btn-sm btn-outline-secondary py-1 px-2 fw-semibold",
+            title = "Ouvrir l'application dans votre navigateur par défaut (Chrome/Safari) pour les téléchargements directs"
+          )
+        )
       )
     ),
 

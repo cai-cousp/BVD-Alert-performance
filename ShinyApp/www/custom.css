@@ -1,0 +1,742 @@
+/* ==========================================================================
+   BVD Alerts App — Website-style custom styles
+   Clean, publication-quality aesthetic based on the litera Bootswatch theme.
+   ========================================================================== */
+
+/* --- Page shell & full-width layout ---------------------------------------- */
+html, body {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #212529;
+  background-color: #ffffff;
+}
+
+.bslib-page-navbar,
+.bslib-page-navbar > .container-fluid,
+.container-fluid,
+.container-xxl,
+.container-xl,
+.container-lg,
+.container-md,
+.container-sm,
+.container,
+.tab-content,
+.tab-pane,
+main {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* --- Frozen Top Header (Sticky at top of screen, centered) ----------------- */
+.app-frozen-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1030 !important;
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #e9ecef !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  padding: 1.15rem 2rem !important;
+  width: 100% !important;
+  text-align: center !important;
+}
+
+.app-frozen-title {
+  font-size: 1.45rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: #212529 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.35rem !important;
+  text-align: center !important;
+}
+
+.app-frozen-subtitle {
+  font-size: 0.92rem !important;
+  color: #6c757d !important;
+  line-height: 1.45 !important;
+  margin-bottom: 0 !important;
+  max-width: 900px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+}
+
+/* --- Main content container ------------------------------------------------ */
+.app-content-body {
+  width: 100%;
+  padding: 1.5rem 2rem;
+}
+.container-fluid {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 1.25rem 2rem;
+}
+
+/* --- Card styling: soft, publication-quality ------------------------------- */
+.card {
+  border: 1px solid #e9ecef;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1.25rem;
+  background: #ffffff;
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.card-header {
+  background: transparent;
+  border-bottom: 1px solid #f1f3f5;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  padding: 0.875rem 1.25rem;
+  color: #343a40;
+}
+
+.card-body {
+  padding: 1.25rem;
+}
+
+/* --- Filter bar: horizontal, compact, clean ------------------------------- */
+.filter-bar {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-bar .form-group {
+  margin-bottom: 0;
+}
+
+.filter-bar .form-label {
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6c757d;
+  margin-bottom: 0.35rem;
+}
+
+.filter-bar .selectize-input,
+.filter-bar .form-select,
+.filter-bar .form-control {
+  border-radius: 0.5rem;
+  border-color: #dee2e6;
+  font-size: 0.9rem;
+}
+
+.filter-bar .radio,
+.filter-bar .checkbox {
+  margin: 0;
+}
+
+/* --- Typography ------------------------------------------------------------ */
+h1, .h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem;
+}
+
+h2, .h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h3, .h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+/* --- Publication-Ready Table Styling (Booktabs & Scientific Standard) ------ */
+.dataTables_wrapper {
+  font-size: 0.84rem;
+  font-family: inherit;
+  margin-top: 0.25rem;
+}
+
+table.dataTable.publication-table,
+table.publication-table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  border-top: 2px solid #cbd5e1 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  margin: 0.5rem 0 !important;
+}
+
+table.dataTable.publication-table thead th,
+table.publication-table thead th {
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  color: #334155 !important;
+  background-color: #f8fafc !important;
+  border-top: none !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding: 0.65rem 0.75rem !important;
+  vertical-align: bottom !important;
+  white-space: nowrap !important;
+}
+
+table.dataTable.publication-table tbody td,
+table.publication-table tbody td {
+  padding: 0.5rem 0.75rem !important;
+  border-top: none !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  border-left: none !important;
+  border-right: none !important;
+  vertical-align: middle !important;
+  color: #1e293b !important;
+  font-size: 0.83rem !important;
+}
+
+/* Eliminate all vertical interior borders (Academic booktabs standard) */
+table.dataTable.publication-table,
+table.dataTable.publication-table th,
+table.dataTable.publication-table td,
+table.dataTable.row-border tbody th,
+table.dataTable.row-border tbody td {
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* DataTables scroll container grey borders (override any default dark lines) */
+.dataTables_scrollHead,
+.dataTables_scrollHeadInner,
+.dataTables_scrollHead table.dataTable,
+.dataTables_scrollHead table.publication-table {
+  border-top: none !important;
+}
+
+.dataTables_scrollHead {
+  border-top: 2px solid #cbd5e1 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.dataTables_scrollBody {
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+.dataTables_wrapper.no-footer .dataTables_scrollBody,
+table.dataTable.no-footer {
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+/* Subtle publication zebra striping & hover */
+table.dataTable.publication-table.stripe tbody tr.odd,
+table.publication-table.stripe tbody tr.odd {
+  background-color: #ffffff !important;
+}
+
+table.dataTable.publication-table.stripe tbody tr.even,
+table.publication-table.stripe tbody tr.even {
+  background-color: #f8fafc !important;
+}
+
+table.dataTable.publication-table tbody tr:hover,
+table.publication-table tbody tr:hover {
+  background-color: #f1f5f9 !important;
+  transition: background-color 0.12s ease;
+}
+
+/* Tabular numbers for perfect vertical numeric alignment */
+.font-monospace-numbers,
+table.dataTable.publication-table td.dt-right,
+table.dataTable.publication-table td.text-end {
+  font-variant-numeric: tabular-nums !important;
+  font-feature-settings: "tnum" 1 !important;
+}
+
+/* Alignment rules */
+table.dataTable.publication-table th.dt-right,
+table.dataTable.publication-table td.dt-right {
+  text-align: right !important;
+}
+
+table.dataTable.publication-table th.dt-center,
+table.dataTable.publication-table td.dt-center {
+  text-align: center !important;
+}
+
+table.dataTable.publication-table th.dt-left,
+table.dataTable.publication-table td.dt-left {
+  text-align: left !important;
+}
+
+/* Publication table footnotes */
+.table-publication-note {
+  font-size: 0.76rem;
+  color: #64748b;
+  line-height: 1.45;
+  margin-top: 0.65rem;
+  margin-bottom: 0.15rem;
+  padding: 0.45rem 0.75rem;
+  background-color: #f8fafc;
+  border-left: 3px solid #94a3b8;
+  border-radius: 0 0.35rem 0.35rem 0;
+}
+
+.table-publication-note strong {
+  color: #334155;
+  font-weight: 650;
+}
+
+/* --- Card Header & Title Block (Polished Publication Style) ---------------- */
+.card-header-title-block {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1 1 auto;
+}
+
+.card-icon-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card-icon-box.icon-blue {
+  background-color: #e0f2fe;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+
+.card-icon-box.icon-green {
+  background-color: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.card-icon-box.icon-purple {
+  background-color: #f3e8ff;
+  color: #9333ea;
+  border: 1px solid #e9d5ff;
+}
+
+.card-icon-box.icon-slate {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.card-title-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.card-title-main {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.card-title-sub {
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+.card-header-action-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.badge-context {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  letter-spacing: 0.01em;
+}
+
+/* --- Plotly chart container ------------------------------------------------ */
+.plotly {
+  border-radius: 0.5rem;
+  background: #ffffff;
+}
+
+/* Segmented switch button styling for case/death metric tabs (enclosed switch) */
+.alert-trend-tabs .nav-pills {
+  display: inline-flex;
+  background-color: #f1f3f5;
+  padding: 3px;
+  border-radius: 30px;
+  border: 1px solid #adb5bd;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  margin-bottom: 0.5rem;
+  gap: 2px;
+}
+
+.alert-trend-tabs .nav-link {
+  padding: 0.2rem 0.85rem;
+  font-size: 0.82rem;
+  border-radius: 20px;
+  border: none;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+/* Unselected type: Black text and bold */
+.alert-trend-tabs .nav-link:not(.active),
+.alert-trend-tabs .nav-pills .nav-link:not(.active) {
+  font-weight: 700 !important;
+  color: #000000 !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.alert-trend-tabs .nav-link:not(.active):hover,
+.alert-trend-tabs .nav-pills .nav-link:not(.active):hover {
+  color: #000000 !important;
+  background-color: #e2e6ea !important;
+}
+
+/* Selected type: White text on blue background */
+.alert-trend-tabs .nav-link.active,
+.alert-trend-tabs .nav-pills .nav-link.active {
+  color: #ffffff !important;
+  background-color: #0d6efd !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(13, 110, 253, 0.35) !important;
+}
+
+/* Hide Plotly interactive control modebar */
+.plotly .modebar-container,
+.plotly .modebar,
+.modebar {
+  display: none !important;
+}
+
+/* --- Help text / method notes --------------------------------------------- */
+.help-text, .text-muted {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #6c757d;
+}
+
+/* --- Bottom-page methodology documentation -------------------------------- */
+.app-documentation .card-body {
+  font-size: 0.95rem;
+}
+
+.app-documentation h4 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: #343a40;
+}
+
+.app-documentation h5 {
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: #495057;
+}
+
+.app-documentation p {
+  margin-bottom: 0.8rem;
+  color: #212529;
+}
+
+.app-documentation .app-math,
+.app-documentation mjx-container[jax="CHTML"][display="true"] {
+  margin-top: 0.25rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.15rem;
+}
+
+.app-documentation .app-math {
+  font-size: 1rem;
+}
+
+.app-documentation .app-math::-webkit-scrollbar {
+  height: 4px;
+}
+
+.app-documentation .app-math::-webkit-scrollbar-thumb {
+  background-color: #ced4da;
+  border-radius: 999px;
+}
+
+.app-documentation h4:first-of-type {
+  margin-top: 0;
+}
+
+.plot-footnote {
+  white-space: pre-line;
+  font-size: 0.75rem;
+}
+
+/* --- Collapsible cards ----------------------------------------------------- */
+.card.collapsible .card-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.card.collapsible .card-header::after {
+  content: "\25BC";
+  float: right;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+  color: #adb5bd;
+}
+
+.card.collapsed .card-header::after {
+  transform: rotate(-90deg);
+}
+
+/* --- Badge (for status indicators) ---------------------------------------- */
+.badge {
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.3em 0.6em;
+  border-radius: 0.375rem;
+}
+
+/* --- Download button styling ----------------------------------------------- */
+.btn-download {
+  min-width: 180px;
+  border-radius: 0.5rem;
+  font-weight: 500;
+}
+
+/* --- Tab transitions ------------------------------------------------------- */
+.tab-pane {
+  animation: fadeIn 0.25s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- Footer ---------------------------------------------------------------- */
+.app-footer {
+  margin-top: 3rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid #e9ecef;
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+/* --- Responsive adjustments ------------------------------------------------ */
+@media (max-width: 992px) {
+  .container-fluid {
+    padding: 1rem 1.25rem;
+  }
+  .app-frozen-header {
+    padding: 0.875rem 1.25rem !important;
+    margin-left: -1.25rem !important;
+    margin-right: -1.25rem !important;
+    margin-top: -1rem !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .container-fluid {
+    padding: 0.75rem 1rem;
+  }
+
+  .navbar {
+    min-height: 52px !important;
+    height: 52px !important;
+    padding: 0 1rem !important;
+  }
+
+  .app-frozen-header {
+    top: 52px !important;
+    padding: 0.65rem 1rem !important;
+    margin-left: -1rem !important;
+    margin-right: -1rem !important;
+    margin-top: -0.75rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .app-frozen-title {
+    font-size: 1.15rem;
+  }
+
+  .app-frozen-subtitle {
+    font-size: 0.82rem;
+  }
+
+  .nav-link {
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem !important;
+  }
+
+  /* Stack filter controls vertically on mobile */
+  .filter-bar .layout-column-wrap,
+  .filter-bar .layout-columns,
+  .filter-bar .row {
+    display: block !important;
+  }
+
+  .filter-bar .form-group {
+    margin-bottom: 0.75rem;
+  }
+
+  .card-header {
+    font-size: 0.88rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .card-body {
+    padding: 1rem;
+  }
+
+  h1, .h1 { font-size: 1.4rem; }
+  h2, .h2 { font-size: 1.15rem; }
+
+  /* Reduce plot heights on mobile */
+  .plotly {
+    min-height: 280px;
+  }
+
+  /* Horizontal scroll for tables */
+  .dataTables_scrollBody {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 576px) {
+  .container-fluid {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .navbar-brand {
+    font-size: 1rem;
+  }
+
+  .app-frozen-header {
+    padding: 0.5rem 0.75rem !important;
+    margin-left: -0.75rem !important;
+    margin-right: -0.75rem !important;
+    margin-top: -0.5rem !important;
+  }
+
+  .card {
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Stack columns on very small screens */
+  .layout-column-wrap,
+  .layout-columns {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* --- Scrollbar styling ----------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* --- Bootstrap-Select (PickerInput) Dropdown -------------------------------- */
+.notification-map-card .leaflet-container {
+  border-radius: 0.5rem;
+  background-color: #f8f9fa;
+  font-family: inherit;
+}
+
+.notification-map-tooltip {
+  min-width: 235px;
+  line-height: 1.45;
+}
+
+.notification-map-tooltip span {
+  display: inline-block;
+  min-width: 175px;
+  color: #495057;
+  font-weight: 600;
+}
+
+.notification-map-tooltip strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #0d6efd;
+  font-size: 0.95rem;
+}
+
+.notification-map-card .leaflet-control-attribution {
+  font-size: 0.65rem;
+}
+
+.bootstrap-select .dropdown-menu {
+  z-index: 99999 !important;
+  max-height: 420px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16) !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.4rem 0 !important;
+}
+
+.bootstrap-select .dropdown-header {
+  font-weight: 700 !important;
+  color: #198754 !important;
+  font-size: 0.8rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.5rem 1rem 0.3rem !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #f1f3f5 !important;
+}
+
+.bootstrap-select .dropdown-item {
+  padding: 0.45rem 1rem !important;
+  font-size: 0.9rem !important;
+  color: #212529 !important;
+}
+
+.bootstrap-select .dropdown-item:hover,
+.bootstrap-select .dropdown-item.active {
+  background-color: #e8f5e9 !important;
+  color: #198754 !important;
+  font-weight: 600 !important;
+}

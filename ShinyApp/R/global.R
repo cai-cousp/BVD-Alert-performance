@@ -75,18 +75,35 @@ message("Map directory: ", map_dir)
 # --- Synchronize pre-rendered Alert_performance_report.html -------------------
 report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
 if (file.exists(report_src)) {
+  src_size <- file.info(report_src)$size
   # Sync to ShinyApp root
   report_app_dest <- file.path(app_dir, "Alert_performance_report.html")
-  if (!file.exists(report_app_dest) || file.info(report_src)$mtime > file.info(report_app_dest)$mtime) {
+  if (!file.exists(report_app_dest) ||
+      file.info(report_src)$mtime > file.info(report_app_dest)$mtime ||
+      file.info(report_app_dest)$size != src_size) {
     file.copy(report_src, report_app_dest, overwrite = TRUE)
   }
   # Sync to ShinyApp www directory so direct download link works in browser
   www_dir <- file.path(app_dir, "www")
-  if (dir.exists(www_dir)) {
-    report_www_dest <- file.path(www_dir, "Alert_performance_report.html")
-    if (!file.exists(report_www_dest) || file.info(report_src)$mtime > file.info(report_www_dest)$mtime) {
-      file.copy(report_src, report_www_dest, overwrite = TRUE)
-    }
+  if (!dir.exists(www_dir)) {
+    dir.create(www_dir, recursive = TRUE)
+  }
+  report_www_dest <- file.path(www_dir, "Alert_performance_report.html")
+  if (!file.exists(report_www_dest) ||
+      file.info(report_src)$mtime > file.info(report_www_dest)$mtime ||
+      file.info(report_www_dest)$size != src_size) {
+    file.copy(report_src, report_www_dest, overwrite = TRUE)
+  }
+  # Also sync to workspace root www directory if present or launched from root
+  root_www_dir <- file.path(root_dir, "www")
+  if (!dir.exists(root_www_dir)) {
+    dir.create(root_www_dir, recursive = TRUE)
+  }
+  root_www_dest <- file.path(root_www_dir, "Alert_performance_report.html")
+  if (!file.exists(root_www_dest) ||
+      file.info(report_src)$mtime > file.info(root_www_dest)$mtime ||
+      file.info(root_www_dest)$size != src_size) {
+    file.copy(report_src, root_www_dest, overwrite = TRUE)
   }
 }
 if (dir.exists(file.path(root_dir, "docs", "reports"))) {

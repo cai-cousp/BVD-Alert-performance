@@ -26,6 +26,21 @@ server <- function(input, output, session) {
   trends_server("trends", filters)
   export_server("export", filters)
 
+  # --- Open in external browser action ---------------------------------------
+  observeEvent(input$header_open_browser, {
+    port <- session$clientData$url_port
+    hostname <- session$clientData$url_hostname %||% "127.0.0.1"
+    protocol <- session$clientData$url_protocol %||% "http:"
+    port_str <- if (!is.null(port) && nzchar(as.character(port))) paste0(":", port) else ""
+    url <- paste0(protocol, "//", hostname, port_str, "/")
+    utils::browseURL(url)
+    showNotification(
+      "Application ouverte dans votre navigateur par défaut.",
+      type = "message",
+      duration = 4
+    )
+  })
+
   # --- Footer: data source and author info -----------------------------------
   output$data_source_info <- renderText({
     max_window <- max(as.Date(all_time_windows), na.rm = TRUE)

@@ -11,8 +11,11 @@
 # =============================================================================
 
 # Source UI and server definitions
-source("ui.R")
-source("server.R")
+shiny_dir <- if (file.exists("ui.R")) "." else if (dir.exists("ShinyApp")) "ShinyApp" else "."
+withr::with_dir(shiny_dir, {
+  source("ui.R", local = FALSE)
+  source("server.R", local = FALSE)
+})
 
 # Create and return the Shiny app object
 shinyApp(ui = ui, server = server)

@@ -47,12 +47,14 @@
 **/*.html
 !docs/**/*.html
 !ShinyApp/report_template.html
+!ShinyApp/Alert_performance_report.html
+!ShinyApp/www/**/*.html
 
 # --- Tests (local only, never pushed) ---------------------------------------
 /test/
 /tests/
 /R/test.R
-www
+/www
 
 # --- macOS ------------------------------------------------------------------
 .DS_Store
@@ -78,6 +80,9 @@ www
 # --- Shinylive local export build (built dynamically in CI) ---
 /site/
 
-# --- Bundled deployment dataset for Shinylive / GitHub Pages ---
+# --- Bundled deployment dataset and static assets for Shinylive / GitHub Pages ---
 !ShinyApp/data/
 !ShinyApp/data/**
+!ShinyApp/www/
+!ShinyApp/www/**
+!ShinyApp/Alert_performance_report.html
