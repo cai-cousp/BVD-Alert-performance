@@ -12,18 +12,13 @@ library(bslib)
 library(bsicons)
 library(dplyr)
 library(tidyr)
-library(purrr)
 library(rlang)
-library(readr)
-library(readxl)
 library(sf)
 library(leaflet)
 library(plotly)
 library(DT)
 library(shinyWidgets)
-library(here)
 library(stringr)
-library(slider)
 library(writexl)
 
 # --- Paths -------------------------------------------------------------------
@@ -72,43 +67,11 @@ message("Data folder:   ", data_folder)
 message("Maps base:     ", maps_base_dir)
 message("Map directory: ", map_dir)
 
-# --- Synchronize pre-rendered Alert_performance_report.html -------------------
-report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
-if (file.exists(report_src)) {
-  src_size <- file.info(report_src)$size
-  # Sync to ShinyApp root
-  report_app_dest <- file.path(app_dir, "Alert_performance_report.html")
-  if (!file.exists(report_app_dest) ||
-      file.info(report_src)$mtime > file.info(report_app_dest)$mtime ||
-      file.info(report_app_dest)$size != src_size) {
-    file.copy(report_src, report_app_dest, overwrite = TRUE)
-  }
-  # Sync to ShinyApp www directory so direct download link works in browser
-  www_dir <- file.path(app_dir, "www")
-  if (!dir.exists(www_dir)) {
-    dir.create(www_dir, recursive = TRUE)
-  }
-  report_www_dest <- file.path(www_dir, "Alert_performance_report.html")
-  if (!file.exists(report_www_dest) ||
-      file.info(report_src)$mtime > file.info(report_www_dest)$mtime ||
-      file.info(report_www_dest)$size != src_size) {
-    file.copy(report_src, report_www_dest, overwrite = TRUE)
-  }
-  # Also sync to workspace root www directory if present or launched from root
-  root_www_dir <- file.path(root_dir, "www")
-  if (!dir.exists(root_www_dir)) {
-    dir.create(root_www_dir, recursive = TRUE)
-  }
-  root_www_dest <- file.path(root_www_dir, "Alert_performance_report.html")
-  if (!file.exists(root_www_dest) ||
-      file.info(report_src)$mtime > file.info(root_www_dest)$mtime ||
-      file.info(root_www_dest)$size != src_size) {
-    file.copy(report_src, root_www_dest, overwrite = TRUE)
-  }
-}
-if (dir.exists(file.path(root_dir, "docs", "reports"))) {
+# --- Register pre-rendered report resource path for desktop Shiny -----------
+report_dir <- file.path(root_dir, "docs", "reports")
+if (dir.exists(report_dir)) {
   tryCatch(
-    shiny::addResourcePath("reports", file.path(root_dir, "docs", "reports")),
+    shiny::addResourcePath("reports", report_dir),
     error = function(e) NULL
   )
 }
@@ -332,15 +295,23 @@ load_latest_data <- function(output_base) {
   trends_smooth_adeq <- trends_smooth
 
   # Recent adequacy (per-HZ summary)
-  adequacy_files <- sort(
-    list.files(latest_dir, pattern = "^02_recent_adequacy.*\\.xlsx$", full.names = TRUE),
+  adequacy_rds <- sort(
+    list.files(latest_dir, pattern = "^02_recent_adequacy.*\\.rds$", full.names = TRUE),
     decreasing = TRUE
   )
-  recent_adequacy <- if (length(adequacy_files) > 0) {
-    readxl::read_excel(adequacy_files[[1]]) |>
-      tibble::as_tibble()
+  recent_adequacy <- if (length(adequacy_rds) > 0) {
+    readRDS(adequacy_rds[[1]]) |> tibble::as_tibble()
   } else {
-    tibble::tibble()
+    adequacy_files <- sort(
+      list.files(latest_dir, pattern = "^02_recent_adequacy.*\\.xlsx$", full.names = TRUE),
+      decreasing = TRUE
+    )
+    if (length(adequacy_files) > 0 && requireNamespace("readxl", quietly = TRUE)) {
+      read_excel_fn <- getExportedValue("readxl", "read_excel")
+      read_excel_fn(adequacy_files[[1]]) |> tibble::as_tibble()
+    } else {
+      tibble::tibble()
+    }
   }
 
   list(
@@ -391,15 +362,28 @@ load_bundled_data <- function(bundled_dir) {
   }
   trends_smooth_adeq <- trends_smooth
 
-  adeq_path <- if (file.exists(file.path(bundled_dir, "02_recent_adequacy.xlsx"))) {
-    file.path(bundled_dir, "02_recent_adequacy.xlsx")
-  } else if (file.exists(file.path(bundled_dir, "recent_adequacy.xlsx"))) {
-    file.path(bundled_dir, "recent_adequacy.xlsx")
+  adeq_rds <- if (file.exists(file.path(bundled_dir, "02_recent_adequacy.rds"))) {
+    file.path(bundled_dir, "02_recent_adequacy.rds")
+  } else if (file.exists(file.path(bundled_dir, "recent_adequacy.rds"))) {
+    file.path(bundled_dir, "recent_adequacy.rds")
   } else NULL
 
-  recent_adequacy <- if (!is.null(adeq_path) && file.exists(adeq_path)) {
-    readxl::read_excel(adeq_path) |> tibble::as_tibble()
-  } else tibble::tibble()
+  recent_adequacy <- if (!is.null(adeq_rds) && file.exists(adeq_rds)) {
+    readRDS(adeq_rds) |> tibble::as_tibble()
+  } else {
+    adeq_path <- if (file.exists(file.path(bundled_dir, "02_recent_adequacy.xlsx"))) {
+      file.path(bundled_dir, "02_recent_adequacy.xlsx")
+    } else if (file.exists(file.path(bundled_dir, "recent_adequacy.xlsx"))) {
+      file.path(bundled_dir, "recent_adequacy.xlsx")
+    } else NULL
+
+    if (!is.null(adeq_path) && file.exists(adeq_path) && requireNamespace("readxl", quietly = TRUE)) {
+      read_excel_fn <- getExportedValue("readxl", "read_excel")
+      read_excel_fn(adeq_path) |> tibble::as_tibble()
+    } else {
+      tibble::tibble()
+    }
+  }
 
   list(
     synthesis = synthesis,

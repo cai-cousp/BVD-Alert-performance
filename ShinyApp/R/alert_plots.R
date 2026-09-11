@@ -17,13 +17,20 @@ suppressPackageStartupMessages({
 # Helpers
 # ---------------------------------------------------------------- #
 
-#' Find the most recent dated output directory containing a target file
-#'
-#' @param output_dir Character. Base output directory (e.g. here::here("output")).
-#' @param pattern Character. Filename pattern to locate.
-#' @return Character path to the most recent matching file, or NA if none.
+default_output_dir <- function() {
+  candidates <- c("output", "../output", "../../output")
+  for (cand in candidates) {
+    if (dir.exists(cand)) return(cand)
+  }
+  "output"
+}
+
+#' Find the latest analysis output file matching a pattern
+#' @param output_dir Character. Base output directory.
+#' @param pattern Character regex for the filename.
+#' @return Character path to the latest file, or NA if none found.
 #' @keywords internal
-latest_output_file <- function(output_dir, pattern) {
+latest_output_file <- function(output_dir = default_output_dir(), pattern) {
   candidates <- list.files(
     path = output_dir,
     pattern = pattern,
@@ -108,7 +115,7 @@ prepare_trend_data <- function(data = NULL, data_path = NULL, hz = NULL,
                                approach = c("Average", "C", "B")) {
   if (is.null(data)) {
     if (is.null(data_path)) {
-      data_path <- latest_output_file(here::here("output"), "02_trends_smooth_adeq\\.rds")
+      data_path <- latest_output_file(default_output_dir(), "02_trends_smooth_adeq\\.rds")
       if (is.na(data_path)) {
         rlang::abort(
           "No '02_trends_smooth_adeq.rds' found under output/. ",
@@ -1278,7 +1285,7 @@ prepare_adequacy_data <- function(data = NULL, data_path = NULL, hz = NULL,
                                   start_date = as.Date("2026-05-01")) {
   if (is.null(data)) {
     if (is.null(data_path)) {
-      data_path <- latest_output_file(here::here("output"), "02_trends_smooth_adeq\\.rds")
+      data_path <- latest_output_file(default_output_dir(), "02_trends_smooth_adeq\\.rds")
       if (is.na(data_path)) {
         rlang::abort(
           "No '02_trends_smooth_adeq.rds' found under output/. ",
@@ -1963,7 +1970,7 @@ plot_adequacy_stacked_interactive <- function(...,
 #' @return Invisible path(s) to the saved file(s) - a character vector.
 #' @export
 save_alert_trend_plot <- function(plot, filename,
-                                   output_dir = here::here("output"),
+                                   output_dir = default_output_dir(),
                                    width = 14, height = 10) {
   # --- List input: one file per element ---------------------------------
   if (is.list(plot) && !inherits(plot, "ggplot") &&

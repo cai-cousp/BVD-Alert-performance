@@ -540,7 +540,7 @@ export_server <- function(id, filters) {
       },
       contentType = "text/csv; charset=utf-8",
       content = function(file) {
-        readr::write_csv(filtered_trends_data(), file)
+        utils::write.csv(filtered_trends_data(), file, row.names = FALSE)
       }
     )
 

@@ -6,5 +6,8 @@
 !/data/**
 !/www/
 !/www/**
-!/report_template.html
-!/Alert_performance_report.html
+# Large compiled reports belong in docs/reports/ and site/ (not in ShinyApp/ to keep app.json lightweight)
+/report_template.html
+/Alert_performance_report.html
+/www/report_template.html
+/www/Alert_performance_report.html

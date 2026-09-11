@@ -43,6 +43,24 @@ ui <- tagList(
       type = "text/javascript",
       src = "https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"
     ),
+    tags$script(HTML("
+      (function() {
+        function notifyReady() {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'shiny:app_ready' }, '*');
+          }
+        }
+        if (window.jQuery) {
+          window.jQuery(document).on('shiny:connected shiny:idle', notifyReady);
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+          setTimeout(notifyReady, 400);
+        });
+        window.addEventListener('load', function() {
+          setTimeout(notifyReady, 200);
+        });
+      })();
+    ")),
     tags$style(HTML("
       html, body {
         width: 100% !important;

@@ -98,6 +98,12 @@ adeq_files <- sort(list.files(latest_dir, pattern = "^02_recent_adequacy.*[.]xls
 if (length(adeq_files) > 0L) {
   file.copy(adeq_files[[1L]], file.path(data_dest, "02_recent_adequacy.xlsx"), overwrite = TRUE)
   file.copy(adeq_files[[1L]], file.path(data_dest, "recent_adequacy.xlsx"), overwrite = TRUE)
+  tryCatch({
+    adeq_df <- readxl::read_excel(adeq_files[[1L]])
+    saveRDS(adeq_df, file.path(data_dest, "02_recent_adequacy.rds"), compress = "xz")
+    saveRDS(adeq_df, file.path(data_dest, "recent_adequacy.rds"), compress = "xz")
+    message("  -> 02_recent_adequacy.rds (", round(file.size(file.path(data_dest, "recent_adequacy.rds")) / 1024, 1), " KB)")
+  }, error = function(e) NULL)
   message("  -> 02_recent_adequacy.xlsx (", round(file.size(file.path(data_dest, "recent_adequacy.xlsx")) / 1024, 1), " KB)")
 }
 
@@ -248,19 +254,9 @@ json_manifest <- jsonlite::toJSON(manifest, auto_unbox = TRUE, pretty = TRUE)
 writeLines(json_manifest, file.path(data_dest, "manifest.json"))
 message("Manifest generated: total bundled payload is ", total_kb, " KB (< ", round(total_kb / 1024, 2), " MB).")
 
-# --- Synchronize Alert_performance_report.html -------------------------------
-report_src <- file.path(root_dir, "docs", "reports", "Alert_performance_report.html")
-if (!file.exists(report_src)) {
-  report_src <- file.path(root_dir, "docs", "reports", "report_template.html")
-}
-if (file.exists(report_src)) {
-  file.copy(report_src, file.path(app_dir, "Alert_performance_report.html"), overwrite = TRUE)
-  file.copy(report_src, file.path(app_dir, "report_template.html"), overwrite = TRUE)
-  www_dir <- file.path(app_dir, "www")
-  if (dir.exists(www_dir)) {
-    file.copy(report_src, file.path(www_dir, "Alert_performance_report.html"), overwrite = TRUE)
-  }
-  message("Synchronized Alert_performance_report.html to ShinyApp/ (", round(file.size(report_src) / (1024 * 1024), 2), " MB).")
-}
+# --- Note on Alert_performance_report.html ------------------------------------
+# The pre-rendered HTML report is kept in docs/reports/ and synchronized directly
+# into site/ by build_shinylive.R to avoid embedding a 5.4 MB file in app.json.
+message("Static report is maintained in docs/reports/ (not bundled into ShinyApp/ to keep app.json lightweight).")
 
 message("Done preparing bundled data!")
