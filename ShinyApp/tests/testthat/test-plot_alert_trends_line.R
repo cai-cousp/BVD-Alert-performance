@@ -157,3 +157,41 @@ test_that("build_plotly_alert_trends orders ribbons before the black trend line 
   # Ribbon must be added before the black line for SVG z-order
   expect_lt(ribbon_idx[1], line_idx[1])
 })
+
+test_that("prepare_trend_data uses upper date of time window", {
+  df <- tibble::tibble(
+    threshold_time_key = c("2026-05-01", "2026-05-08"),
+    threshold_valid_to = c("2026-05-07", "2026-05-14"),
+    zone_sante_notification = c("Bunia", "Bunia"),
+    case_alerts = c(5, 8),
+    Alert_case_threshold_lower = c(2, 3),
+    Alert_case_threshold_upper = c(8, 10),
+    Alert_case_threshold = c(5, 6)
+  )
+
+  prep <- prepare_trend_data(df, metric = "case", start_date = "2026-05-01")
+  expect_equal(prep$date, as.Date(c("2026-05-07", "2026-05-14")))
+
+  # When threshold_valid_to is missing, falls back to threshold_time_key + 6L
+  df_no_valid_to <- dplyr::select(df, -threshold_valid_to)
+  prep_fallback <- prepare_trend_data(df_no_valid_to, metric = "case", start_date = "2026-05-01")
+  expect_equal(prep_fallback$date, as.Date(c("2026-05-07", "2026-05-14")))
+})
+
+test_that("prepare_adequacy_data uses upper date of time window", {
+  df <- tibble::tibble(
+    threshold_time_key = c("2026-05-01", "2026-05-08"),
+    threshold_valid_to = c("2026-05-07", "2026-05-14"),
+    zone_sante_notification = c("Bunia", "Bunia"),
+    case_adequacy = c(0.8, 1.2),
+    death_adequacy = c(1.0, 0.9)
+  )
+
+  prep <- prepare_adequacy_data(df, start_date = "2026-05-01")
+  expect_equal(prep$date, as.Date(c("2026-05-07", "2026-05-14")))
+
+  # When threshold_valid_to is missing, falls back to threshold_time_key + 6L
+  df_no_valid_to <- dplyr::select(df, -threshold_valid_to)
+  prep_fallback <- prepare_adequacy_data(df_no_valid_to, start_date = "2026-05-01")
+  expect_equal(prep_fallback$date, as.Date(c("2026-05-07", "2026-05-14")))
+})

@@ -29,7 +29,7 @@ if (!is.na(shiny_root)) {
   })
 }
 
-test_that("UI contains the frozen top header with title and subtitle", {
+test_that("UI contains the frozen top header with title, dataset date, and subtitle", {
   skip_if(!exists("ui"), message = "ui object not loaded")
 
   ui_str <- as.character(htmltools::as.tags(ui))
@@ -37,8 +37,9 @@ test_that("UI contains the frozen top header with title and subtitle", {
   # Header container exists and is centered
   expect_true(grepl("app-frozen-header", ui_str))
 
-  # Title and description text are present
+  # Title with dataset date and description text are present
   expect_true(grepl("Analyse des tendances et performance des alertes de la MVE/B", ui_str))
+  expect_true(grepl("15-09-2026", ui_str))
   expect_true(grepl("Suivi longitudinal des alertes de cas et de d[ée]c[èe]s par rapport aux seuils attendus", ui_str))
   expect_true(grepl("avec [ée]valuation de la performance", ui_str))
 
@@ -49,9 +50,9 @@ test_that("UI contains the frozen top header with title and subtitle", {
   expect_gt(content_pos, 0)
   expect_lt(header_pos, content_pos)
 
-  # Export section is at the bottom of the page
-  export_pos <- regexpr("download_report", ui_str)[1]
-  expect_gt(export_pos, content_pos)
+  # Documentation section is at the bottom of the page
+  doc_pos <- regexpr("app-documentation", ui_str)[1]
+  expect_gt(doc_pos, content_pos)
 
   # Footer contains data source and author placeholders
   expect_true(grepl("Source des donn[ée]es", ui_str))
@@ -59,29 +60,27 @@ test_that("UI contains the frozen top header with title and subtitle", {
   expect_true(grepl("app_author_info", ui_str))
 })
 
-test_that("alert threshold documentation appears below report generation", {
+test_that("alert threshold documentation contains consult report and methods buttons without inline documentation card", {
   skip_if(!exists("ui"), message = "ui object not loaded")
 
   ui_str <- as.character(htmltools::as.tags(ui))
-  report_pos <- regexpr("download_report", ui_str)[1]
-  export_details_pos <- regexpr("D[ée]tails des formats d'exportation", ui_str)[1]
+  view_report_pos <- regexpr("view_report", ui_str)[1]
+  view_methods_pos <- regexpr("view_methods", ui_str)[1]
   documentation_pos <- regexpr("app-documentation", ui_str)[1]
-  workflow_pos <- regexpr("Workflow des seuils d'alerte", ui_str)[1]
 
-  expect_gt(report_pos, 0)
-  expect_gt(export_details_pos, 0)
+  expect_gt(view_report_pos, 0)
+  expect_gt(view_methods_pos, 0)
   expect_gt(documentation_pos, 0)
-  expect_gt(workflow_pos, 0)
-  expect_lt(report_pos, documentation_pos)
-  expect_lt(export_details_pos, documentation_pos)
-  expect_lt(documentation_pos, workflow_pos)
-  expect_true(grepl("app-math", ui_str))
+  expect_lt(documentation_pos, view_report_pos)
 
-  # Documentation is user-facing methodology rather than implementation detail.
-  documentation_start <- documentation_pos
-  documentation_end <- workflow_pos + 5000L
-  documentation_text <- substr(ui_str, documentation_start, documentation_end)
-  expect_false(grepl("compute_|build_|_by_hz", documentation_text))
+  # Ensure deleted export buttons are not present
+  expect_false(grepl("download_report", ui_str))
+  expect_false(grepl("download_data", ui_str))
+
+  # Ensure inline documentation text / formulas are removed since they are accessible via buttons
+  expect_false(grepl("Workflow des seuils d'alerte", ui_str))
+  expect_false(grepl("app-math", ui_str))
+  expect_false(grepl("Approche A : mortalit[ée] de base", ui_str))
 })
 
 test_that("trends_ui does not contain duplicate header", {

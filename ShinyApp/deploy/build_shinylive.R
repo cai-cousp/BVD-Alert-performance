@@ -205,6 +205,14 @@ tryCatch({
             round(file.size(report_src) / (1024 * 1024), 2), " MB, not in app.json).")
   }
 
+  # Copy static pre-rendered methods note directly into export directory
+  methods_src <- file.path(root_dir, "docs", "methods", "methods_note_alert_thresholds_fr.html")
+  if (file.exists(methods_src)) {
+    file.copy(methods_src, file.path(dest_path, "methods_note_alert_thresholds_fr.html"), overwrite = TRUE)
+    message("Copied static methods_note_alert_thresholds_fr.html directly into ", dest_path, " (",
+            round(file.size(methods_src) / (1024 * 1024), 2), " MB, not in app.json).")
+  }
+
   # Inject custom loading screen, Plotly, and DataTables into index.html
   index_file <- file.path(dest_path, "index.html")
   if (file.exists(index_file)) {

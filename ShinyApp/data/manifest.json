@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-09-11 11:24:02 WAT",
-  "source_output_dir": "2026_09_09",
+  "generated_at": "2026-09-17 02:15:54 WAT",
+  "source_output_dir": "2026_09_17",
   "date_stamp": {},
   "health_zones_count": 58,
-  "weeks_count": 23,
-  "total_payload_kb": 823.87,
+  "weeks_count": 24,
+  "total_payload_kb": 911.69,
   "files": [
     {
       "filename": "01_intermediate_parameters.rds",
-      "size_kb": 201.28
+      "size_kb": 240.79
     },
     {
       "filename": "01_thresholds_synthesis.rds",
-      "size_kb": 11.03
+      "size_kb": 11.48
     },
     {
       "filename": "02_recent_adequacy.rds",
-      "size_kb": 1.9
+      "size_kb": 1.91
     },
     {
       "filename": "02_recent_adequacy.xlsx",
-      "size_kb": 9.51
+      "size_kb": 9.46
     },
     {
       "filename": "02_trends_smooth_adeq.rds",
-      "size_kb": 54.55
+      "size_kb": 58.46
     },
     {
       "filename": "drc_boundary_data.rds",
@@ -32,11 +32,11 @@
     },
     {
       "filename": "intermediate_params.rds",
-      "size_kb": 201.28
+      "size_kb": 240.79
     },
     {
       "filename": "manifest.json",
-      "size_kb": 1.21
+      "size_kb": 1.36
     },
     {
       "filename": "notification_map_data.rds",
@@ -52,19 +52,19 @@
     },
     {
       "filename": "recent_adequacy.rds",
-      "size_kb": 1.9
+      "size_kb": 1.91
     },
     {
       "filename": "recent_adequacy.xlsx",
-      "size_kb": 9.51
+      "size_kb": 9.46
     },
     {
       "filename": "synthesis.rds",
-      "size_kb": 11.03
+      "size_kb": 11.48
     },
     {
       "filename": "trends_smooth_adeq.rds",
-      "size_kb": 54.55
+      "size_kb": 58.46
     }
   ]
 }

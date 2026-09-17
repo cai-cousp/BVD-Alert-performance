@@ -320,7 +320,7 @@ ui <- tagList(
 
   page_fluid(
     theme = create_app_theme(),
-    title = "Analyse des tendances et performance des alertes de la MVE/B",
+    title = paste0("Analyse des tendances et performance des alertes de la MVE/B (au ", dataset_date_formatted, ")"),
 
     # Frozen header centered at top of page
     div(
@@ -330,7 +330,10 @@ ui <- tagList(
         div(class = "header-spacer d-none d-lg-block", style = "width: 140px;"),
         div(
           class = "text-center flex-grow-1",
-          h1(class = "app-frozen-title", "Analyse des tendances et performance des alertes de la MVE/B"),
+          h1(
+            class = "app-frozen-title",
+            paste0("Analyse des tendances et performance des alertes de la MVE/B (au ", dataset_date_formatted, ")")
+          ),
           p(
             class = "app-frozen-subtitle text-muted mb-0",
             "Suivi longitudinal des alertes de cas et de décès par rapport aux seuils attendus, ",

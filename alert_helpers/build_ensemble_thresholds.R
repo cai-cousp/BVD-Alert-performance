@@ -100,7 +100,7 @@ build_ensemble_thresholds <- function(
           dplyr::select(
             zone_sante_notification,
             threshold_time_key,
-            dplyr::all_of(parameter_cols)
+            dplyr::any_of(c(parameter_cols, "estimated_true_cases_recent", "expected_deaths"))
           ),
         by = dplyr::join_by(
           zone_sante_notification,
@@ -160,7 +160,9 @@ build_ensemble_thresholds <- function(
     "alert_case_threshold_upper_C",
     "alert_death_threshold_C",
     "alert_death_threshold_lower_C",
-    "alert_death_threshold_upper_C"
+    "alert_death_threshold_upper_C",
+    "estimated_true_cases_recent",
+    "expected_deaths"
   )
   first_cols <- c(
     "threshold_valid_from",
@@ -172,7 +174,7 @@ build_ensemble_thresholds <- function(
     "week_start"
   )
 
-  hz_thresholds |>
+  ens_df <- hz_thresholds |>
     dplyr::filter(
       zone_sante_notification != "Ensemble de la zone affectée"
     ) |>
@@ -197,7 +199,51 @@ build_ensemble_thresholds <- function(
         dplyr::any_of(parameter_cols),
         ~dplyr::if_else(is.finite(.x), .x, NA_real_)
       )
-    ) |>
+    )
+
+  if ("estimated_true_cases_recent" %in% names(ens_df)) {
+    ens_df <- ens_df |>
+      dplyr::mutate(
+        beta_c = dplyr::if_else(
+          is.finite(estimated_true_cases_recent) & estimated_true_cases_recent > 0 & is.finite(alert_case_threshold_C),
+          alert_case_threshold_C / estimated_true_cases_recent,
+          beta_c
+        ),
+        beta_c_low = dplyr::if_else(
+          is.finite(estimated_true_cases_recent) & estimated_true_cases_recent > 0 & is.finite(alert_case_threshold_lower_C),
+          alert_case_threshold_lower_C / estimated_true_cases_recent,
+          beta_c_low
+        ),
+        beta_c_high = dplyr::if_else(
+          is.finite(estimated_true_cases_recent) & estimated_true_cases_recent > 0 & is.finite(alert_case_threshold_upper_C),
+          alert_case_threshold_upper_C / estimated_true_cases_recent,
+          beta_c_high
+        )
+      )
+  }
+
+  if ("expected_deaths" %in% names(ens_df)) {
+    ens_df <- ens_df |>
+      dplyr::mutate(
+        beta_d = dplyr::if_else(
+          is.finite(expected_deaths) & expected_deaths > 0 & is.finite(alert_death_threshold_C),
+          alert_death_threshold_C / expected_deaths,
+          beta_d
+        ),
+        beta_d_low = dplyr::if_else(
+          is.finite(expected_deaths) & expected_deaths > 0 & is.finite(alert_death_threshold_lower_C),
+          alert_death_threshold_lower_C / expected_deaths,
+          beta_d_low
+        ),
+        beta_d_high = dplyr::if_else(
+          is.finite(expected_deaths) & expected_deaths > 0 & is.finite(alert_death_threshold_upper_C),
+          alert_death_threshold_upper_C / expected_deaths,
+          beta_d_high
+        )
+      )
+  }
+
+  ens_df |>
     dplyr::mutate(
       alert_case_threshold_lower_B = NA_real_,
       alert_case_threshold_upper_B = NA_real_,

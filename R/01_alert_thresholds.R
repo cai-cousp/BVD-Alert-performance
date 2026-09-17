@@ -80,6 +80,14 @@ conf.province <-
          lab_resultat_final == "Positif") |>
   count(province_notification) |> pull(province_notification)
 
+
+conf.province.zs <-
+  evd |>
+  filter(classification_finale == "Cas confirmé"|
+           lab_resultat_final == "Positif") |>
+  count(province_notification, zone_sante_notification) |>
+  select(-n)
+
 confirmed_notification_dates <- evd |>
   dplyr::mutate(
     is_confirmed = alert_is_confirmed_case(evd),
@@ -127,6 +135,9 @@ nowcasts_deaths <- compute_nowcasts_by_zone(
   snapshot_key = evd_snapshot_key
 )
 
+nowcasts <-
+  nowcasts |>
+  left_join(conf.province.zs, by = c("zone_sante_notification"))
 
 names(evd)[grepl("num",names(evd), ignore.case = TRUE)]
 
@@ -439,6 +450,21 @@ hz_rt <- compute_rt_by_hz(
     )
   )
 
+# Overall Rt for the whole affected area per time window (trailing 21 days)
+overall_rt <- compute_rt(
+  evd_conf,
+  windows = window_grid,
+  nowcast = nowcasts
+)
+
+# Rt by province per time window (trailing 21 days)
+province_rt <- compute_rt(
+  evd_conf,
+  windows = window_grid,
+  by = province_notification,
+  nowcast = nowcasts
+)
+
 # Notification timeliness and reporting delays per HZ x time window (trailing 21 days)
 hz_delays <- compute_delays_by_hz(
   evd_conf,
@@ -470,10 +496,10 @@ hz_multipliers <- compute_alert_multipliers_by_window(
 )
 
 if (interactive()) {
-  hz_multipliers |> filter(zone_sante_notification == "Bunia") |> View()
-  case_derived_thresholds.i |> filter(zone_sante_notification == "Bunia") |> View()
-  case_derived_thresholds.i |> View()
-  evd |> filter(zone_sante_notification == "Bunia") |> View()
+  # hz_multipliers |> filter(zone_sante_notification == "Bunia") |> View()
+  # case_derived_thresholds.i |> filter(zone_sante_notification == "Bunia") |> View()
+  # case_derived_thresholds.i |> View()
+  # evd |> filter(zone_sante_notification == "Bunia") |> View()
 }
 
 
@@ -531,7 +557,7 @@ window_multiplier_totals <- case_derived_thresholds.i |>
   )
 
 if (interactive()) {
-  window_multiplier_totals |> View()
+  # window_multiplier_totals |> View()
 }
 
 case_derived_thresholds <- case_derived_thresholds.i |>
@@ -590,6 +616,7 @@ case_derived_thresholds <- case_derived_thresholds.i |>
       threshold_valid_to,
       dplyr::ends_with("_C"),
       estimated_true_cases_recent,
+      expected_deaths,
       beta_c,
       beta_c_low,
       beta_c_high,
@@ -602,7 +629,7 @@ case_derived_thresholds <- case_derived_thresholds.i |>
     )
 
 if (interactive()) {
-  case_derived_thresholds.i |> filter(zone_sante_notification == "Bunia") |> View()
+  # case_derived_thresholds.i |> filter(zone_sante_notification == "Bunia") |> View()
 }
 
 # 6. Phase 4: Threshold Synthesis
@@ -690,8 +717,8 @@ synthesis.tab <- synthesis |>
                 dplyr::all_of(thresholds.cols))
 
 if (interactive()) {
-  synthesis |> filter(zone_sante_notification == "Bunia") |> View()
-  synthesis_ensemble |> arrange(threshold_time_key) |> View()
+  # synthesis |> filter(zone_sante_notification == "Bunia") |> View()
+  # synthesis_ensemble |> arrange(threshold_time_key) |> View()
 }
 
 case_derived_ensemble <- case_derived_thresholds |>
@@ -706,12 +733,37 @@ case_derived_ensemble <- case_derived_thresholds |>
     alert_death_threshold_lower_C = sum(alert_death_threshold_lower_C, na.rm = TRUE),
     alert_death_threshold_upper_C = sum(alert_death_threshold_upper_C, na.rm = TRUE),
     estimated_true_cases_recent = sum(estimated_true_cases_recent, na.rm = TRUE),
-    beta_c = mean(beta_c, na.rm = TRUE),
-    beta_c_low = mean(beta_c_low, na.rm = TRUE),
-    beta_c_high = mean(beta_c_high, na.rm = TRUE),
-    beta_d = mean(beta_d, na.rm = TRUE),
-    beta_d_low = mean(beta_d_low, na.rm = TRUE),
-    beta_d_high = mean(beta_d_high, na.rm = TRUE),
+    expected_deaths = sum(expected_deaths, na.rm = TRUE),
+    beta_c = dplyr::if_else(
+      estimated_true_cases_recent > 0 & alert_case_threshold_C > 0,
+      alert_case_threshold_C / estimated_true_cases_recent,
+      mean(beta_c, na.rm = TRUE)
+    ),
+    beta_c_low = dplyr::if_else(
+      estimated_true_cases_recent > 0 & alert_case_threshold_lower_C > 0,
+      alert_case_threshold_lower_C / estimated_true_cases_recent,
+      mean(beta_c_low, na.rm = TRUE)
+    ),
+    beta_c_high = dplyr::if_else(
+      estimated_true_cases_recent > 0 & alert_case_threshold_upper_C > 0,
+      alert_case_threshold_upper_C / estimated_true_cases_recent,
+      mean(beta_c_high, na.rm = TRUE)
+    ),
+    beta_d = dplyr::if_else(
+      expected_deaths > 0 & alert_death_threshold_C > 0,
+      alert_death_threshold_C / expected_deaths,
+      mean(beta_d, na.rm = TRUE)
+    ),
+    beta_d_low = dplyr::if_else(
+      expected_deaths > 0 & alert_death_threshold_lower_C > 0,
+      alert_death_threshold_lower_C / expected_deaths,
+      mean(beta_d_low, na.rm = TRUE)
+    ),
+    beta_d_high = dplyr::if_else(
+      expected_deaths > 0 & alert_death_threshold_upper_C > 0,
+      alert_death_threshold_upper_C / expected_deaths,
+      mean(beta_d_high, na.rm = TRUE)
+    ),
     expected_secondary = sum(expected_secondary, na.rm = TRUE),
     contacts_per_case_used = mean(contacts_per_case_used, na.rm = TRUE),
     .by = threshold_time_key
@@ -723,6 +775,7 @@ names(hz_detection_backcalc)
 # Save intermediate parameters as a list
 intermediate_params <- list(
   cfr = hz_cfr,
+  nowcasts = nowcasts,
   cfr_backcalc = hz_cfr_backcalc,
   detection_rates = hz_detection,
   detection_backcalc = hz_detection_backcalc,
@@ -732,6 +785,8 @@ intermediate_params <- list(
   alert_multiplier_weekly_data = attr(hz_multipliers, "weekly_model_data"),
   alert_multiplier_model_summary = attr(hz_multipliers, "model_summary"),
   rt_sar = hz_rt,
+  overall_rt = overall_rt,
+  province_rt = province_rt,
   contacts_per_case = hz_contacts,
   delays = hz_delays,
   baseline_cmr = cmr_province,

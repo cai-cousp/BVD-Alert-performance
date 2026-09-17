@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.24">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="dcterms.date" content="2026-09-17">
+
+<title>Methodological Note — Alert Trends and Adequacy Analysis, EVD17 Response</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="methods_note_alert_trends_files/libs/clipboard/clipboard.min.js"></script>
+<script src="methods_note_alert_trends_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="methods_note_alert_trends_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="methods_note_alert_trends_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="methods_note_alert_trends_files/libs/quarto-html/popper.min.js"></script>
+<script src="methods_note_alert_trends_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="methods_note_alert_trends_files/libs/quarto-html/anchor.min.js"></script>
+<link href="methods_note_alert_trends_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="methods_note_alert_trends_files/libs/quarto-html/quarto-syntax-highlighting-dc55a5b9e770e841cd82e46aadbfb9b0.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="methods_note_alert_trends_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="methods_note_alert_trends_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="methods_note_alert_trends_files/libs/bootstrap/bootstrap-82a8e0681529fff444bbc39736ff6b3a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">0.1</span> Purpose</a></li>
+  <li><a href="#data-inputs" id="toc-data-inputs" class="nav-link" data-scroll-target="#data-inputs"><span class="header-section-number">0.2</span> Data inputs</a></li>
+  <li><a href="#alert-counting-and-threshold-joining" id="toc-alert-counting-and-threshold-joining" class="nav-link" data-scroll-target="#alert-counting-and-threshold-joining"><span class="header-section-number">0.3</span> Alert counting and threshold joining</a></li>
+  <li><a href="#alert-adequacy-index-aai" id="toc-alert-adequacy-index-aai" class="nav-link" data-scroll-target="#alert-adequacy-index-aai"><span class="header-section-number">0.4</span> Alert Adequacy Index (AAI)</a>
+  <ul class="collapse">
+  <li><a href="#interpretation" id="toc-interpretation" class="nav-link" data-scroll-target="#interpretation"><span class="header-section-number">0.4.1</span> Interpretation</a></li>
+  </ul></li>
+  <li><a href="#temporal-smoothing" id="toc-temporal-smoothing" class="nav-link" data-scroll-target="#temporal-smoothing"><span class="header-section-number">0.5</span> Temporal smoothing</a></li>
+  <li><a href="#trend-testing" id="toc-trend-testing" class="nav-link" data-scroll-target="#trend-testing"><span class="header-section-number">0.6</span> Trend testing</a></li>
+  <li><a href="#recent-adequacy-ranking" id="toc-recent-adequacy-ranking" class="nav-link" data-scroll-target="#recent-adequacy-ranking"><span class="header-section-number">0.7</span> Recent adequacy ranking</a></li>
+  <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs"><span class="header-section-number">0.8</span> Outputs</a></li>
+  <li><a href="#glossary" id="toc-glossary" class="nav-link" data-scroll-target="#glossary"><span class="header-section-number">0.9</span> Glossary</a></li>
+  <li><a href="#glossary-02_trends_smooth_adeq.rds-english" id="toc-glossary-02_trends_smooth_adeq.rds-english" class="nav-link" data-scroll-target="#glossary-02_trends_smooth_adeq.rds-english"><span class="header-section-number">1</span> Glossary — 02_trends_smooth_adeq.rds (English)</a>
+  <ul class="collapse">
+  <li><a href="#caveats-and-limitations" id="toc-caveats-and-limitations" class="nav-link" data-scroll-target="#caveats-and-limitations"><span class="header-section-number">1.1</span> Caveats and limitations</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="../../methods_note_alert_trends.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Methodological Note — Alert Trends and Adequacy Analysis, EVD17 Response</h1>
+<p class="subtitle lead">Describing the implemented adequacy metrics and trend tests</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 17, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="purpose" class="level2" data-number="0.1">
+<h2 data-number="0.1" class="anchored" data-anchor-id="purpose"><span class="header-section-number">0.1</span> Purpose</h2>
+<p>This note documents the trend-analysis workflow implemented in <code>R/02_alert_trends.R</code>. It explains how the script turns the threshold synthesis from script 01 into weekly adequacy measures, smoothed counts, recent rankings, and Mann-Kendall trend tests.</p>
+<p>The operational question is:</p>
+<blockquote class="blockquote">
+<p>Are health zones generating the expected volume of validated alerts, and is that volume changing over time?</p>
+</blockquote>
+<hr>
+</section>
+<section id="data-inputs" class="level2" data-number="0.2">
+<h2 data-number="0.2" class="anchored" data-anchor-id="data-inputs"><span class="header-section-number">0.2</span> Data inputs</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Input</th>
+<th>Source</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Cleaned EVD line list</td>
+<td>Latest file under <code>../DataCleaning/data/Output/</code></td>
+<td>Validated alerts from 2026 onward</td>
+</tr>
+<tr class="even">
+<td>Threshold synthesis table</td>
+<td><code>output/01_thresholds_synthesis.rds</code></td>
+<td>HZ- and window-specific threshold values</td>
+</tr>
+</tbody>
+</table>
+<p>The script loads both inputs, keeps validated alerts only, converts notification dates to <code>Date</code>, and restricts the analysis to 2026 onward.</p>
+<hr>
+</section>
+<section id="alert-counting-and-threshold-joining" class="level2" data-number="0.3">
+<h2 data-number="0.3" class="anchored" data-anchor-id="alert-counting-and-threshold-joining"><span class="header-section-number">0.3</span> Alert counting and threshold joining</h2>
+<p>Validated alerts are joined to the threshold synthesis and summarised by time window (week start date) and health zone. The analysis keeps separate counts for case alerts and death alerts, and it derives a <code>total_alerts</code> series for trend testing.</p>
+<p>The threshold columns are normalized to consistent names before adequacy is computed.</p>
+<hr>
+</section>
+<section id="alert-adequacy-index-aai" class="level2" data-number="0.4">
+<h2 data-number="0.4" class="anchored" data-anchor-id="alert-adequacy-index-aai"><span class="header-section-number">0.4</span> Alert Adequacy Index (AAI)</h2>
+<p>For each HZ and week, the script computes midpoint thresholds:</p>
+<p><span class="math display">\[
+T_{case}^{mid} = \frac{T_{case}^{lower} + T_{case}^{upper}}{2}
+\]</span></p>
+<p><span class="math display">\[
+T_{death}^{mid} = \frac{T_{death}^{lower} + T_{death}^{upper}}{2}
+\]</span></p>
+<p>Adequacy ratios are then defined as:</p>
+<p><span class="math display">\[
+A_{case} = \frac{case\_alerts}{T_{case}^{mid}}, \qquad
+A_{death} = \frac{death\_alerts}{T_{death}^{mid}}
+\]</span></p>
+<p>The Alert Adequacy Index is the mean of the available adequacy ratios:</p>
+<p><span class="math display">\[
+AAI = \text{mean}(A_{case}, A_{death})
+\]</span></p>
+<p>When no valid threshold midpoint is available, AAI is set to missing.</p>
+<section id="interpretation" class="level3" data-number="0.4.1">
+<h3 data-number="0.4.1" class="anchored" data-anchor-id="interpretation"><span class="header-section-number">0.4.1</span> Interpretation</h3>
+<ul>
+<li><code>AAI = 1</code> indicates alert volume matches the threshold midpoint.</li>
+<li><code>AAI &lt; 1</code> indicates fewer alerts than expected.</li>
+<li><code>AAI &gt; 1</code> indicates more alerts than expected.</li>
+</ul>
+<p>The script classifies adequacy using the following cut points:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Under-alerting</td>
+<td><code>AAI &lt; 0.75</code></td>
+</tr>
+<tr class="even">
+<td>Adequate</td>
+<td><code>0.75 &lt;= AAI &lt;= 2.0</code></td>
+</tr>
+<tr class="odd">
+<td>Over-alerting</td>
+<td><code>AAI &gt; 2.0</code></td>
+</tr>
+</tbody>
+</table>
+<p>For the recent summary table, the script averages AAI over the most recent 3 weeks.</p>
+<hr>
+</section>
+</section>
+<section id="temporal-smoothing" class="level2" data-number="0.5">
+<h2 data-number="0.5" class="anchored" data-anchor-id="temporal-smoothing"><span class="header-section-number">0.5</span> Temporal smoothing</h2>
+<p>The trend script applies a right-aligned 3-week rolling mean to case and death alerts within each HZ. This smooths short-term noise while retaining the current week in the rolling window.</p>
+<p>The smoothed counts are stored as <code>case_alerts_3w</code> and <code>death_alerts_3w</code>.</p>
+<hr>
+</section>
+<section id="trend-testing" class="level2" data-number="0.6">
+<h2 data-number="0.6" class="anchored" data-anchor-id="trend-testing"><span class="header-section-number">0.6</span> Trend testing</h2>
+<p>The script applies the Mann-Kendall test to <code>total_alerts</code> within each HZ. The test is run only when there are at least 4 weeks with AAI data in the zone.</p>
+<p>For each HZ, the script extracts:</p>
+<ul>
+<li>Kendall’s tau</li>
+<li>the p-value</li>
+<li>a simple trend label:
+<ul>
+<li>Increasing: <code>p &lt; 0.05</code> and <code>tau &gt; 0</code></li>
+<li>Decreasing: <code>p &lt; 0.05</code> and <code>tau &lt; 0</code></li>
+<li>Stable: all other non-missing cases</li>
+<li>Unknown: failed test or missing result</li>
+</ul></li>
+</ul>
+<p>The same procedure is repeated for the most recent 6 weeks to capture short-term movement.</p>
+<hr>
+</section>
+<section id="recent-adequacy-ranking" class="level2" data-number="0.7">
+<h2 data-number="0.7" class="anchored" data-anchor-id="recent-adequacy-ranking"><span class="header-section-number">0.7</span> Recent adequacy ranking</h2>
+<p>For the most recent 3 weeks, the script computes mean AAI by HZ, assigns an adequacy category, joins the long-run trend labels, and sorts the result by mean AAI. This produces a ranking table that highlights HZs that are currently under-alerting or over-alerting.</p>
+<hr>
+</section>
+<section id="outputs" class="level2" data-number="0.8">
+<h2 data-number="0.8" class="anchored" data-anchor-id="outputs"><span class="header-section-number">0.8</span> Outputs</h2>
+<p>The script saves:</p>
+<ul>
+<li><code>02_trends_smooth.rds</code></li>
+<li><code>02_trends_smooth_adeq.rds</code></li>
+<li><code>02_recent_adequacy.xlsx</code></li>
+<li><code>trends_smooth.xlsx</code></li>
+<li><code>trends_smooth_adeq.xlsx</code></li>
+<li><code>02_alert_trends.pdf</code></li>
+</ul>
+<p>The PDF includes an overall alert trend plot and a faceted view for the highest-priority under-alerting HZs.</p>
+<hr>
+</section>
+<section id="glossary" class="level2" data-number="0.9">
+<h2 data-number="0.9" class="anchored" data-anchor-id="glossary"><span class="header-section-number">0.9</span> Glossary</h2>
+<p>The column-level glossary for <code>02_trends_smooth_adeq.rds</code> is included below.</p>
+</section>
+<section id="glossary-02_trends_smooth_adeq.rds-english" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Glossary — 02_trends_smooth_adeq.rds (English)</h1>
+<ul>
+<li>zone_sante_notification: Health zone name used for notifications.</li>
+<li>Province: Province containing the health zone.</li>
+<li>Population: Projected population for the health zone.</li>
+<li>expected_weekly_deaths_cmr: Expected weekly community deaths from CMR.</li>
+<li>death_threshold_lower_A: Baseline death threshold lower bound (Approach A).</li>
+<li>death_threshold_upper_A: Baseline death threshold upper bound (Approach A).</li>
+<li>alert_case_threshold_lower_B: Beni case benchmark lower bound (Approach B).</li>
+<li>alert_case_threshold_upper_B: Beni case benchmark upper bound.</li>
+<li>alert_death_threshold_lower_B: Beni death benchmark lower bound.</li>
+<li>alert_death_threshold_upper_B: Beni death benchmark upper bound.</li>
+<li>threshold_time_key: Threshold window identifier used when joining thresholds.</li>
+<li>week_start: Week start date associated with the threshold window.</li>
+<li>alert_case_threshold_C: Central case threshold from Approach C (case-derived).</li>
+<li>alert_case_threshold_lower_C: Lower case threshold from Approach C.</li>
+<li>alert_case_threshold_upper_C: Upper case threshold from Approach C.</li>
+<li>alert_death_threshold_C: Central death threshold from Approach C.</li>
+<li>alert_death_threshold_lower_C: Lower death threshold from Approach C.</li>
+<li>alert_death_threshold_upper_C: Upper death threshold from Approach C.</li>
+<li>Alert_case_threshold_lower: Synthesised case lower threshold (saved column name in trends object).</li>
+<li>Alert_case_threshold_upper: Synthesised case upper threshold.</li>
+<li>Alert_death_threshold_lower: Synthesised death lower threshold.</li>
+<li>Alert_death_threshold_upper: Synthesised death upper threshold.</li>
+<li>Alert_case_threshold: Final central case-alert threshold.</li>
+<li>Alert_death_threshold: Final central death-alert threshold.</li>
+<li>case_alerts: Observed number of validated case alerts in the week × HZ.</li>
+<li>death_alerts: Observed number of validated death alerts in the week × HZ.</li>
+<li>total_alerts: Sum of case_alerts and death_alerts for the week × HZ.</li>
+<li>case_adequacy: Ratio of observed case_alerts to case threshold midpoint.</li>
+<li>death_adequacy: Ratio of observed death_alerts to death threshold midpoint.</li>
+<li>aai: Alert Adequacy Index — mean of case_adequacy and death_adequacy (when available).</li>
+<li>adequacy_category: Category derived from aai for the current week (<code>Under-alerting</code>, <code>Adequate</code>, <code>Over-alerting</code>).</li>
+<li>case_alerts_3w: 3-week right-aligned rolling mean of case_alerts.</li>
+<li>death_alerts_3w: 3-week right-aligned rolling mean of death_alerts.</li>
+<li>aai.3w: AAI computed using the 3-week smoothed alerts (averaging smoothed case and death adequacy).</li>
+<li>adequacy_category.3w: Adequacy category computed on the <code>aai.3w</code> value.</li>
+<li>total_alert_deaths: Total observed deaths per week × HZ, computed by applying <code>alert_is_observed_death()</code> (checks both <code>nature_alerte</code> and <code>s6_statut_final_patient</code> for “Décédé”) to validated alerts within each threshold time window. Broader than <code>death_alerts</code> which uses only <code>nature_alerte</code> variants.</li>
+<li>adequacy_cmr: CMR adequacy — ratio of <code>total_alert_deaths</code> to <code>expected_weekly_deaths_cmr</code>. A value &gt; 1 indicates more observed deaths in that week × HZ than the CMR baseline predicts.</li>
+</ul>
+<hr>
+<section id="caveats-and-limitations" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="caveats-and-limitations"><span class="header-section-number">1.1</span> Caveats and limitations</h2>
+<ul>
+<li>The AAI depends on the quality of the threshold synthesis from script 01.</li>
+<li>Right-aligned rolling means introduce lag.</li>
+<li>Mann-Kendall detects monotonic trends, not abrupt changes or seasonality.</li>
+<li>The current adequacy thresholds are operational cut points, not formal clinical standards.</li>
+<li>HZs with sparse data can have unstable trend labels.</li>
+</ul>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

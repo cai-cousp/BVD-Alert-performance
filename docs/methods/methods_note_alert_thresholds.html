@@ -6,7 +6,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="dcterms.date" content="2026-07-18">
+<meta name="dcterms.date" content="2026-09-17">
 
 <title>Methodological Note — Weekly Alert Thresholds, EVD17 Response</title>
 <style>
@@ -94,9 +94,11 @@ window.Quarto = {
   <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs"><span class="header-section-number">0.7</span> Outputs</a></li>
   <li><a href="#glossary" id="toc-glossary" class="nav-link" data-scroll-target="#glossary"><span class="header-section-number">0.8</span> Glossary</a></li>
   <li><a href="#glossary-01_thresholds_synthesis.rds-english" id="toc-glossary-01_thresholds_synthesis.rds-english" class="nav-link" data-scroll-target="#glossary-01_thresholds_synthesis.rds-english"><span class="header-section-number">1</span> Glossary — 01_thresholds_synthesis.rds (English)</a></li>
-  <li><a href="#glossary-intermediate-parameters-01_intermediate_parameters.rds-english" id="toc-glossary-intermediate-parameters-01_intermediate_parameters.rds-english" class="nav-link" data-scroll-target="#glossary-intermediate-parameters-01_intermediate_parameters.rds-english"><span class="header-section-number">2</span> Glossary — Intermediate parameters (01_intermediate_parameters.rds, English)</a>
+  <li><a href="#glossary-nowcast-columns-05_nowcast_by_zone.rds-and-derived-tables" id="toc-glossary-nowcast-columns-05_nowcast_by_zone.rds-and-derived-tables" class="nav-link" data-scroll-target="#glossary-nowcast-columns-05_nowcast_by_zone.rds-and-derived-tables"><span class="header-section-number">2</span> Glossary — Nowcast columns (05_nowcast_by_zone.rds and derived tables)</a></li>
+  <li><a href="#glossary-intermediate-parameters-01_intermediate_parameters.rds-english" id="toc-glossary-intermediate-parameters-01_intermediate_parameters.rds-english" class="nav-link" data-scroll-target="#glossary-intermediate-parameters-01_intermediate_parameters.rds-english"><span class="header-section-number">3</span> Glossary — Intermediate parameters (01_intermediate_parameters.rds, English)</a></li>
+  <li><a href="#glossary-contacts-per-case-01_intermediate_parameters.rds-english" id="toc-glossary-contacts-per-case-01_intermediate_parameters.rds-english" class="nav-link" data-scroll-target="#glossary-contacts-per-case-01_intermediate_parameters.rds-english"><span class="header-section-number">4</span> Glossary — Contacts per case (01_intermediate_parameters.rds, English)</a>
   <ul class="collapse">
-  <li><a href="#caveats-and-limitations" id="toc-caveats-and-limitations" class="nav-link" data-scroll-target="#caveats-and-limitations"><span class="header-section-number">2.1</span> Caveats and limitations</a></li>
+  <li><a href="#caveats-and-limitations" id="toc-caveats-and-limitations" class="nav-link" data-scroll-target="#caveats-and-limitations"><span class="header-section-number">4.1</span> Caveats and limitations</a></li>
   </ul></li>
   </ul>
 <div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="../../methods_note_alert_thresholds.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
@@ -117,7 +119,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">July 18, 2026</p>
+      <p class="date">September 17, 2026</p>
     </div>
   </div>
   
@@ -200,7 +202,7 @@ T_A^{lower} = 0.9 \times E[D_w], \qquad T_A^{upper} = 1.1 \times E[D_w]
 <p>The implemented workflow is:</p>
 <ol type="1">
 <li>Restrict to validated alerts.</li>
-<li>Aggregate by HZ and epiweek.</li>
+<li>Aggregate by HZ and week.</li>
 <li>Compute positivity as:</li>
 </ol>
 <p><span class="math display">\[
@@ -260,19 +262,24 @@ T_A^{lower} = 0.9 \times E[D_w], \qquad T_A^{upper} = 1.1 \times E[D_w]
 <td><code>EpiEstim</code> parametric SI (mean 12, sd 5 days) over last 21 days of onset dates; pooled <span class="math inline">\(R_t\)</span> as fallback for sparse HZs</td>
 </tr>
 <tr class="odd">
-<td>SAR</td>
-<td>Derived</td>
-<td><span class="math inline">\(R_t / k\)</span> where <span class="math inline">\(k = 10\)</span> contacts per case; capped and coerced to 0.1 when missing</td>
+<td>Contacts per case (<span class="math inline">\(k\)</span>)</td>
+<td><code>compute_contacts_per_case_by_hz()</code></td>
+<td>Followed contacts ÷ confirmed cases within the analysis window; HZ-specific when the HZ has ≥ 5 confirmed cases and a positive ratio, otherwise the overall pooled ratio</td>
 </tr>
 <tr class="even">
+<td>SAR</td>
+<td>Derived</td>
+<td><span class="math inline">\(R_t / k\)</span> using the estimated contacts per case; coerced to 0.1 when missing</td>
+</tr>
+<tr class="odd">
 <td>Expected deaths</td>
 <td>Derived</td>
 <td><span class="math inline">\(\hat{C}_{\text{true}} \times \text{CFR}\)</span></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Expected secondary cases</td>
 <td>Derived</td>
-<td><span class="math inline">\(\hat{C}_{\text{true}} \times k \times \text{SAR}\)</span></td>
+<td><span class="math inline">\(\hat{C}_{\text{true}} \times k \times \text{SAR}\)</span> (equals <span class="math inline">\(\hat{C}_{\text{true}} \times R_t\)</span> since SAR <span class="math inline">\(= R_t / k\)</span>)</td>
 </tr>
 </tbody>
 </table>
@@ -341,6 +348,7 @@ T_A^{lower} = 0.9 \times E[D_w], \qquad T_A^{upper} = 1.1 \times E[D_w]
 <p>Approach C produces time-varying thresholds using non-overlapping windows:</p>
 <ul>
 <li><strong>Window generation.</strong> Non-overlapping 7-day windows are generated backward from the most recent confirmed-case onset date. Each window is identified by a <code>threshold_time_key</code> (its start date) and carries a <code>recent_case_window_start</code> / <code>recent_case_window_end</code> pair (the exposure period) and a <code>threshold_valid_from</code> / <code>threshold_valid_to</code> pair (the period during which the threshold applies).</li>
+<li><strong>Single time axis (harmonized, 2026-08-16).</strong> This analysis grid is the <em>only</em> weekly time axis used in the alert pipeline. Alert counts, confirmed-case exposure, nowcast deltas, and the Poisson multiplier model are all binned onto these grid windows (<code>bin_dates_by_grid()</code> in <code>alert_helpers/window_utils.R</code>); Monday-calendar-week binning is not used for live indicators. The grid is data-anchored (windows end on the latest confirmed-case date), so its start weekday follows the data — Sunday in the current snapshot — rather than a fixed calendar convention.</li>
 <li><strong>Reporting-delay guard.</strong> The last <code>n_copy_last = 1</code> window copies its growth-rate estimate (and consequently its multiplier estimates) from the preceding window, because the most recent days are subject to right-censoring from notification delays.</li>
 <li><strong>Pooled fallback.</strong> A pooled (all-HZ combined) growth rate is computed for each window date and used when the HZ-specific estimate is unavailable (too few cases, fit failure).</li>
 <li><strong>Analysis bounds.</strong> Windows are bounded by <code>analysis_start_date</code> (max of earliest confirmed-case date, 2026-04-01) and <code>analysis_end_date</code> (min of latest confirmed-case date, today).</li>
@@ -352,20 +360,21 @@ T_A^{lower} = 0.9 \times E[D_w], \qquad T_A^{upper} = 1.1 \times E[D_w]
 <p><span class="math display">\[
 \log E[A_w] = \log(E_w) + \beta_0
 \]</span></p>
-<p>where <span class="math inline">\(A_w\)</span> is the validated-alert count in epiweek <span class="math inline">\(w\)</span> (alive alerts for <span class="math inline">\(\beta_c\)</span>, dead alerts for <span class="math inline">\(\beta_d\)</span>), and <span class="math inline">\(E_w\)</span> is the expected exposure. The multiplier is <span class="math inline">\(\beta = \exp(\beta_0)\)</span>.</p>
-<p><strong>Exposure allocation.</strong> The HZ-level total estimated true cases is allocated across epiweeks in proportion to detected confirmed cases:</p>
+<p>where <span class="math inline">\(A_w\)</span> is the validated-alert count in grid window <span class="math inline">\(w\)</span> (alive alerts for <span class="math inline">\(\beta_c\)</span>, dead alerts for <span class="math inline">\(\beta_d\)</span>), and <span class="math inline">\(E_w\)</span> is the expected exposure. The multiplier is <span class="math inline">\(\beta = \exp(\beta_0)\)</span>.</p>
+<p><strong>Window binning.</strong> Validated alerts, confirmed-case exposure, and nowcast deltas are binned onto the same analysis grid windows used for threshold reporting (see C.5) — not Monday calendar weeks — so each grid window contributes exactly one observation to the model and the estimated rate applies to the same 7-day periods as the thresholds it feeds. For a given threshold window, the model is fitted on the cumulative grid series observed up to that window end (one observation per grid window, no lookahead).</p>
+<p><strong>Exposure allocation.</strong> The HZ-level total estimated true cases is allocated across grid windows in proportion to detected confirmed cases:</p>
 <p><span class="math display">\[
 E_w^{\text{case}} = \hat{C}_{\text{true, recent}} \times \frac{c_w}{\sum_{w} c_w}, \qquad E_w^{\text{death}} = \hat{C}_{\text{true, recent}} \times \text{CFR} \times \frac{c_w}{\sum_{w} c_w}
 \]</span></p>
-<p>where <span class="math inline">\(c_w\)</span> is the detected confirmed-case count in epiweek <span class="math inline">\(w\)</span>.</p>
-<p><strong>Dispersion correction.</strong> Standard errors are scaled by <span class="math inline">\(\sqrt{\max(1, \phi)}\)</span> where <span class="math inline">\(\phi = \text{deviance} / \text{df}_{\text{residual}}\)</span> is the dispersion estimate, producing quasi-Poisson-style intervals under over-dispersion.</p>
-<p><strong>Fallback.</strong> If fewer than <code>min_model_weeks = 2</code> epiweeks have positive exposure, the GLM is not fitted. A simple rate ratio <span class="math inline">\(\beta = \sum A_w / \sum E_w\)</span> is used instead, with exact Poisson confidence intervals. If total exposure is zero or non-finite, the multiplier is missing and a pooled multiplier (computed across all HZs from validated alerts over estimated true cases) is substituted at synthesis time.</p>
+<p>where <span class="math inline">\(c_w\)</span> is the detected confirmed-case count in grid window <span class="math inline">\(w\)</span>.</p>
+<p><strong>Dispersion handling.</strong> The dispersion estimate is <span class="math inline">\(\phi = \text{deviance} / \text{df}_{\text{residual}}\)</span> from the Poisson fit. When <span class="math inline">\(\phi\)</span> exceeds the overdispersion threshold (default <span class="math inline">\(\phi &gt; 1.5\)</span>), the model is refitted as a negative-binomial GLM with the same log-link and offset, and <span class="math inline">\(\beta\)</span> with its confidence interval are taken from that fit (the additional dispersion parameter <span class="math inline">\(\theta\)</span> is estimated from the data). For <span class="math inline">\(\phi \le 1.5\)</span> — or when the negative-binomial fit does not converge — standard errors are scaled by <span class="math inline">\(\sqrt{\max(1, \phi)}\)</span>, producing quasi-Poisson-style intervals.</p>
+<p><strong>Fallback.</strong> If fewer than <code>min_model_weeks = 2</code> grid windows have positive exposure, the GLM is not fitted. A simple rate ratio <span class="math inline">\(\beta = \sum A_w / \sum E_w\)</span> is used instead, with exact Poisson confidence intervals. If total exposure is zero or non-finite, the multiplier is missing and a pooled multiplier (computed across all HZs from validated alerts over estimated true cases) is substituted at synthesis time.</p>
 <p><strong>Interpretation.</strong> <span class="math inline">\(\beta &gt; 1\)</span> means the alert system generates more validated alerts than predicted by the estimated true burden (possibly including non-EVD alerts); <span class="math inline">\(\beta &lt; 1\)</span> means under-ascertainment relative to estimated true cases.</p>
-<p><strong>Threshold construction.</strong> The case-derived thresholds combine a non-zero baseline floor (from Approach B) with the multiplier-applied expected count:</p>
+<p><strong>Threshold construction.</strong> Case-derived thresholds are purely data-driven from estimated case burden and Poisson offset multipliers (without adding historical Approach B baseline floors, which are integrated separately in the threshold synthesis phase):</p>
 <p><span class="math display">\[
-T_C^{\text{lower}} = T_B^{\text{baseline}} + \beta_{\text{low}} \times E, \qquad T_C^{\text{upper}} = T_B^{\text{baseline}} + \beta_{\text{high}} \times E
+T_C^{\text{point}} = \beta \times E, \qquad T_C^{\text{lower}} = \beta_{\text{low}} \times E, \qquad T_C^{\text{upper}} = \beta_{\text{high}} \times E
 \]</span></p>
-<p>where <span class="math inline">\(T_B^{\text{baseline}}\)</span> is the Approach B baseline alert count (<code>baseline_alive_alerts</code> for cases, <code>baseline_death_alerts</code> for deaths), and <span class="math inline">\(E\)</span> is the expected count (<code>estimated_true_cases_recent</code> for cases, <code>expected_deaths</code> for deaths).</p>
+<p>where <span class="math inline">\(E\)</span> is the expected count (<code>estimated_true_cases_recent</code> for cases, <code>expected_deaths</code> for deaths), and <span class="math inline">\(\beta, \beta_{\text{low}}, \beta_{\text{high}}\)</span> are the central estimate and uncertainty bounds from the offset GLM (Poisson, or negative-binomial when the fit is overdispersed).</p>
 <hr>
 </section>
 </section>
@@ -413,7 +422,7 @@ T_C^{\text{lower}} = T_B^{\text{baseline}} + \beta_{\text{low}} \times E, \qquad
 <li>alert_death_threshold_lower_B: Lower death-alert benchmark from Approach B.</li>
 <li>alert_death_threshold_upper_B: Upper death-alert benchmark from Approach B.</li>
 <li>threshold_time_key: Identifier for the threshold window (anchor date or window start used by the synthesis).</li>
-<li>threshold_epiweek: The epiweek (week start date) associated with the threshold window.</li>
+<li>week_start: The start date of the threshold time window (7 days).</li>
 <li>recent_case_window_start: Start date of the recent case window used for case-derived estimates.</li>
 <li>recent_case_window_end: End date of the recent case window used for case-derived estimates.</li>
 <li>recent_case_window_days: Length in days of the recent window.</li>
@@ -432,8 +441,28 @@ T_C^{\text{lower}} = T_B^{\text{baseline}} + \beta_{\text{low}} \times E, \qquad
 <li>Alert_death_threshold: Final central (point) death-alert threshold (midpoint of Alert_death_lower and Alert_death_upper).</li>
 </ul>
 </section>
-<section id="glossary-intermediate-parameters-01_intermediate_parameters.rds-english" class="level1" data-number="2">
-<h1 data-number="2"><span class="header-section-number">2</span> Glossary — Intermediate parameters (01_intermediate_parameters.rds, English)</h1>
+<section id="glossary-nowcast-columns-05_nowcast_by_zone.rds-and-derived-tables" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Glossary — Nowcast columns (05_nowcast_by_zone.rds and derived tables)</h1>
+<p>Counts with a <code>_nowcast</code> suffix are right-truncation-corrected estimates of the true number of confirmed/positive cases: an EpiNow2 nowcast is fitted per eligible health zone (shared onset -&gt; lab-confirmation delay), and sparse zones fall back to an empirical delay correction. <code>_low</code> / <code>_high</code> give the 90% credible interval of the correction.</p>
+<ul>
+<li>nowcast_median / nowcast_lower_90 / nowcast_upper_90: Posterior nowcast of confirmed cases by onset date (median and 90% credible interval).</li>
+<li>method: Nowcast method per zone (“epinow2” or “empirical_delay_correction”).</li>
+<li>status: Fit status per zone (“fit_ok”, “fit_error”, “below_min_cases”, “no_recent_cases” or “no_series”).</li>
+<li>n_recent_confirmed_nowcast (+_low/_high): Nowcast-corrected confirmed cases in the recent-case window.</li>
+<li>recent_count_source: “nowcast” when the window overlaps the nowcast tail, otherwise “observed”.</li>
+<li>growth_n_cases_nowcast: Nowcast-corrected case total used for the exponential growth fit of a rolling window.</li>
+<li>growth_count_source: “nowcast” when the growth window was corrected, otherwise “observed”.</li>
+<li>n_detected_nowcast (+_low/_high): Nowcast-corrected cumulative detected cases used in the back-calculation detection method.</li>
+<li>detection_rate_cfr_backcalc_nowcast (+_low/_high): Detection rate computed with the nowcast-corrected detected-case numerator.</li>
+<li>n_confirmed_nowcast (+_low/_high): Nowcast-corrected confirmed cases in the CFR back-calculation table.</li>
+<li>n_confirmed_cases_nowcast (+_low/_high) / contacts_per_case_nowcast: Nowcast-corrected confirmed-case denominator and the resulting contacts-per-case ratio.</li>
+<li>cumulative_confirmed_cases_nowcast: Nowcast-corrected cumulative confirmed cases in the combined detection table.</li>
+<li>confirmed_cases_week_nowcast (+_low/_high): Nowcast-corrected confirmed cases per HZ-week used as exposure in the alert-multiplier models.</li>
+<li>case_count_source: “nowcast” when the week-level exposure was corrected, otherwise “observed”.</li>
+</ul>
+</section>
+<section id="glossary-intermediate-parameters-01_intermediate_parameters.rds-english" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Glossary — Intermediate parameters (01_intermediate_parameters.rds, English)</h1>
 <p>The following columns appear in the case-derived component of <code>01_intermediate_parameters.rds</code> (<code>case_derived_params</code>) and the multiplier table.</p>
 <ul>
 <li>estimated_true_cases_recent: Estimated true incident cases in the recent 7-day window, computed as detected confirmed cases divided by the combined detection rate.</li>
@@ -445,7 +474,7 @@ T_C^{\text{lower}} = T_B^{\text{baseline}} + \beta_{\text{low}} \times E, \qquad
 <li>beta_d_low: Lower 95% confidence bound for beta_d.</li>
 <li>beta_d_high: Upper 95% confidence bound for beta_d.</li>
 <li>expected_deaths: Expected deaths in the recent window, computed as estimated_true_cases_recent multiplied by the (direct) CFR.</li>
-<li>expected_secondary: Expected secondary cases, computed as estimated_true_cases_recent multiplied by contacts_per_case (10) and SAR (Rt / 10).</li>
+<li>expected_secondary: Expected secondary cases, computed as estimated_true_cases_recent multiplied by contacts_per_case_used and SAR. Since SAR = Rt / contacts_per_case_used, this equals estimated_true_cases_recent multiplied by Rt.</li>
 <li>detection_rate_adj: Combined detection rate; arithmetic mean of valid epi-link and back-CFR detection estimates (0 &lt; rate &lt;= 1).</li>
 <li>under_detection_rate: One minus detection_rate_adj.</li>
 <li>detection_rate_source_names: Which detection methods contributed (“backcalc”, “epilink”, or “backcalc,epilink”).</li>
@@ -453,19 +482,33 @@ T_C^{\text{lower}} = T_B^{\text{baseline}} + \beta_{\text{low}} \times E, \qquad
 <li>cfr_used: CFR used for expected-death calculations; HZ-specific when &gt;= 5 confirmed cases, otherwise the pooled (all-HZ) CFR.</li>
 <li>cfr_backcalc_used: Back-calculated CFR (eligible deaths / (confirmed + eligible unconfirmed deaths)); used in the back-calculation detection method.</li>
 <li>r_used: Exponential growth rate used in the delay-adjustment term; HZ-specific estimate or pooled fallback.</li>
-<li>sar: Secondary attack rate, computed as Rt / contacts_per_case; defaults to 0.1 when missing.</li>
+<li>sar: Secondary attack rate, computed as Rt / contacts_per_case_used; defaults to 0.1 when missing.</li>
+<li>contacts_per_case_used: Contacts per confirmed case used in the case-derived component; HZ-specific when the HZ has at least 5 confirmed cases in the window and a positive ratio, otherwise the overall pooled ratio estimated from the cleaned contact follow-up data.</li>
 <li>pooled_beta_c: Pooled (all-HZ) case-alert multiplier, computed as total validated alive alerts / total estimated true cases; substituted when HZ-specific beta_c is missing.</li>
 <li>pooled_beta_d: Pooled (all-HZ) death-alert multiplier, computed as total validated dead alerts / total expected deaths; substituted when HZ-specific beta_d is missing.</li>
 <li>baseline_alive_alerts: Beni benchmark case-alert count scaled to HZ population (Approach B). Previously used as a non-zero floor in Approach C case thresholds; now retained as a reference value only (no longer added to Approach C formulas).</li>
 <li>baseline_death_alerts: Beni benchmark death-alert count scaled to HZ population (Approach B). Previously used as a non-zero floor in Approach C death thresholds; now retained as a reference value only (no longer added to Approach C formulas).</li>
 </ul>
+</section>
+<section id="glossary-contacts-per-case-01_intermediate_parameters.rds-english" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Glossary — Contacts per case (01_intermediate_parameters.rds, English)</h1>
+<p>The <code>contacts_per_case</code> element of <code>01_intermediate_parameters.rds</code> holds the per-HZ estimates from the cleaned contact follow-up data:</p>
+<ul>
+<li>n_contacts: Contacts enrolled within the analysis window.</li>
+<li>n_followed_contacts: Enrolled contacts counted as followed (any follow-up visit recorded, not earlier than 30 days before enrollment).</li>
+<li>n_confirmed_cases: Confirmed cases with symptom onset within the analysis window.</li>
+<li>contacts_per_case_hz: HZ-specific ratio (n_followed_contacts / n_confirmed_cases).</li>
+<li>contacts_per_case_pooled: Overall pooled ratio across all HZs (total followed contacts / total confirmed cases).</li>
+<li>contacts_per_case_used: Ratio actually used; HZ-specific when the HZ has at least 5 confirmed cases and a positive ratio, otherwise the pooled ratio.</li>
+<li>source: Whether the used ratio comes from the HZ (“hz”) or the pooled estimate (“pooled”).</li>
+</ul>
 <hr>
-<section id="caveats-and-limitations" class="level2" data-number="2.1">
-<h2 data-number="2.1" class="anchored" data-anchor-id="caveats-and-limitations"><span class="header-section-number">2.1</span> Caveats and limitations</h2>
+<section id="caveats-and-limitations" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="caveats-and-limitations"><span class="header-section-number">4.1</span> Caveats and limitations</h2>
 <ul>
 <li>Population figures are projected from 2024 and may not reflect displacement or local demographic change.</li>
 <li>The crude mortality rate is applied as a fallback assumption and is not zone-specific.</li>
-<li><code>k = 10</code> contacts per case is a working assumption.</li>
+<li><code>k</code>, the contacts per case, is estimated from the cleaned contact follow-up line list and the EVD line list over the analysis window (HZ-specific where reliable, pooled otherwise). The estimate is sensitive to the completeness of contact registration; HZs with incomplete contact follow-up registration fall back to the pooled ratio.</li>
 <li>The Beni benchmark depends on the definition of low-positivity periods and the quality of the historical dataset.</li>
 <li>The case-derived thresholds depend on sparse-data estimates and rolling-window model fitting, so uncertainty can be substantial in some HZs.</li>
 <li>The epi-link method assumes that <code>alert_lien_epidemiologic == "Oui"</code> indicates active case-finding; misclassification of this field biases the detection estimate.</li>

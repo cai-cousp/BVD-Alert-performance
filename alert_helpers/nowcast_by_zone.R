@@ -271,7 +271,9 @@ nowcast_tail_empirical <- function(counts,
                                    ref_date,
                                    max_delay,
                                    zone,
-                                   status) {
+                                   status,
+                                   province = NA_character_,
+                                   province_col = "province_notification") {
   tail_counts <- counts |>
     dplyr::filter(.data$date >= ref_date - max_delay + 1L) |>
     dplyr::mutate(
@@ -305,20 +307,110 @@ nowcast_tail_empirical <- function(counts,
         .data$observed / .data$f_low,
         .data$observed
       ),
+      province_notification = province,
       zone_sante_notification = zone,
       method = "empirical_delay_correction",
       status = status
-    ) |>
-    dplyr::select(
-      "zone_sante_notification",
-      "date",
-      "observed",
-      "nowcast_median",
-      "nowcast_lower_90",
-      "nowcast_upper_90",
-      "method",
-      "status"
     )
+
+  if (!is.null(province_col) && province_col != "province_notification" && !province_col %in% names(tail_counts)) {
+    tail_counts[[province_col]] <- province
+  }
+
+  out_cols <- unique(c(
+    "province_notification",
+    if (!is.null(province_col) && province_col != "province_notification") province_col,
+    "zone_sante_notification",
+    "date",
+    "observed",
+    "nowcast_median",
+    "nowcast_lower_90",
+    "nowcast_upper_90",
+    "method",
+    "status"
+  ))
+
+  tail_counts |> dplyr::select(dplyr::all_of(out_cols))
+}
+
+#' Build health zone to province lookup table from EVD line list
+#' @noRd
+build_zone_province_lookup <- function(evd, province_col = "province_notification") {
+  resolved_province_col <- if (!is.null(province_col) && province_col %in% names(evd)) {
+    province_col
+  } else if ("province_notification" %in% names(evd)) {
+    "province_notification"
+  } else if ("province" %in% names(evd)) {
+    "province"
+  } else if ("Province" %in% names(evd)) {
+    "Province"
+  } else {
+    NULL
+  }
+
+  if (is.null(resolved_province_col)) {
+    return(NULL)
+  }
+
+  evd |>
+    dplyr::filter(
+      !is.na(.data$zone_sante_notification),
+      !is.na(.data[[resolved_province_col]])
+    ) |>
+    dplyr::count(
+      .data$zone_sante_notification,
+      province = as.character(.data[[resolved_province_col]])
+    ) |>
+    dplyr::slice_max(n, n = 1L, by = "zone_sante_notification", with_ties = FALSE) |>
+    dplyr::select("zone_sante_notification", "province")
+}
+
+#' Augment nowcast tibble with province information
+#' @noRd
+augment_nowcast_province <- function(nowcasts, zone_province_lookup, province_col = "province_notification") {
+  prov_col_name <- if (!is.null(province_col) && nchar(province_col) > 0L) province_col else "province_notification"
+  if (is.null(nowcasts) || !is.data.frame(nowcasts) || nrow(nowcasts) == 0L) return(nowcasts)
+
+  attrs <- attributes(nowcasts)
+
+  res <- if (!is.null(zone_province_lookup) && "zone_sante_notification" %in% names(nowcasts)) {
+    if ("province_notification" %in% names(nowcasts)) {
+      nowcasts
+    } else {
+      nowcasts |>
+        dplyr::left_join(
+          zone_province_lookup |> dplyr::rename(province_notification = "province"),
+          by = "zone_sante_notification"
+        )
+    }
+  } else {
+    if (!"province_notification" %in% names(nowcasts)) {
+      nowcasts |>
+        dplyr::mutate(province_notification = NA_character_)
+    } else {
+      nowcasts
+    }
+  }
+
+  if (prov_col_name != "province_notification" && !prov_col_name %in% names(res)) {
+    res[[prov_col_name]] <- res$province_notification
+  }
+
+  out_cols <- unique(c(
+    "province_notification",
+    if (prov_col_name != "province_notification") prov_col_name,
+    setdiff(names(res), c("province_notification", prov_col_name))
+  ))
+
+  res <- res |> dplyr::select(dplyr::all_of(out_cols))
+
+  for (a in names(attrs)) {
+    if (!a %in% c("names", "row.names", "class")) {
+      attr(res, a) <- attrs[[a]]
+    }
+  }
+
+  res
 }
 
 #' Compute EpiNow2 nowcasts for every health zone
@@ -332,6 +424,9 @@ nowcast_tail_empirical <- function(counts,
 #'   notification date in `evd` that is not later than the system date.
 #' @param onset_col Character. Onset date column.
 #' @param report_col Character. Lab confirmation date column.
+#' @param province_col Character. Province column name in `evd`; defaults to
+#'   `"province_notification"`. If not found, falls back to `"province"` or
+#'   `"Province"`, or `NA` if none exists.
 #' @param series Character. One of `"confirmed_cases"`, `"confirmed_deaths"`,
 #'   or `"both"`.
 #' @param death_date_cols Character vector of death date columns in priority
@@ -364,6 +459,7 @@ compute_nowcasts_by_zone <- function(evd,
                                      ref_date = NULL,
                                      onset_col = "alert_date_debut_symptoms",
                                      report_col = "lab_date_analyse",
+                                     province_col = "province_notification",
                                      series = c("confirmed_cases", "confirmed_deaths", "both"),
                                      death_date_cols = c("s6_date_deces", "date_de_deces"),
                                      death_report_fallback_col = "date_heure_notification_alerte",
@@ -431,6 +527,8 @@ compute_nowcasts_by_zone <- function(evd,
     }
   )
 
+  zone_province_lookup <- build_zone_province_lookup(evd, province_col = province_col)
+
   if (series == "both") {
     cached_hit <- find_cached_nowcast(
       cache_path = cache_path,
@@ -445,8 +543,25 @@ compute_nowcasts_by_zone <- function(evd,
     )
     if (!is.null(cached_hit)) {
       cached <- cached_hit$cached
+      nowcasts_out <- cached$nowcasts
+      if (is.list(nowcasts_out)) {
+        if (!is.null(nowcasts_out$confirmed_cases) && !"province_notification" %in% names(nowcasts_out$confirmed_cases)) {
+          nowcasts_out$confirmed_cases <- augment_nowcast_province(
+            nowcasts_out$confirmed_cases,
+            zone_province_lookup,
+            province_col = province_col
+          )
+        }
+        if (!is.null(nowcasts_out$confirmed_deaths) && !"province_notification" %in% names(nowcasts_out$confirmed_deaths)) {
+          nowcasts_out$confirmed_deaths <- augment_nowcast_province(
+            nowcasts_out$confirmed_deaths,
+            zone_province_lookup,
+            province_col = province_col
+          )
+        }
+      }
       return(structure(
-        cached$nowcasts,
+        nowcasts_out,
         ref_date = cached$ref_date,
         delay_summary = cached$delay_summary,
         delay_cdf = cached$delay_cdf,
@@ -464,6 +579,7 @@ compute_nowcasts_by_zone <- function(evd,
       ref_date = ref_date,
       onset_col = onset_col,
       report_col = report_col,
+      province_col = province_col,
       series = "confirmed_cases",
       death_date_cols = death_date_cols,
       death_report_fallback_col = death_report_fallback_col,
@@ -487,6 +603,7 @@ compute_nowcasts_by_zone <- function(evd,
       ref_date = ref_date,
       onset_col = onset_col,
       report_col = report_col,
+      province_col = province_col,
       series = "confirmed_deaths",
       death_date_cols = death_date_cols,
       death_report_fallback_col = death_report_fallback_col,
@@ -537,6 +654,7 @@ compute_nowcasts_by_zone <- function(evd,
     ref_date = ref_date,
     onset_col = onset_col,
     report_col = report_col,
+    province_col = province_col,
     series = series,
     death_date_cols = death_date_cols,
     death_report_fallback_col = death_report_fallback_col,
@@ -563,6 +681,7 @@ compute_nowcast_stratum <- function(evd,
                                     ref_date = NULL,
                                     onset_col = "alert_date_debut_symptoms",
                                     report_col = "lab_date_analyse",
+                                    province_col = "province_notification",
                                     series = c("confirmed_cases", "confirmed_deaths", "both"),
                                     death_date_cols = c("s6_date_deces", "date_de_deces"),
                                     death_report_fallback_col = "date_heure_notification_alerte",
@@ -615,6 +734,8 @@ compute_nowcast_stratum <- function(evd,
     }
   )
 
+  zone_province_lookup <- build_zone_province_lookup(evd, province_col = province_col)
+
   cached_hit <- find_cached_nowcast(
     cache_path = cache_path,
     snapshot_key = snapshot_key,
@@ -628,8 +749,16 @@ compute_nowcast_stratum <- function(evd,
   )
   if (!is.null(cached_hit)) {
     cached <- cached_hit$cached
+    nowcasts_out <- cached$nowcasts
+    if (!"province_notification" %in% names(nowcasts_out)) {
+      nowcasts_out <- augment_nowcast_province(
+        nowcasts_out,
+        zone_province_lookup,
+        province_col = province_col
+      )
+    }
     return(structure(
-      cached$nowcasts,
+      nowcasts_out,
       ref_date = cached$ref_date,
       delay_summary = cached$delay_summary,
       delay_cdf = cached$delay_cdf,
@@ -729,6 +858,17 @@ compute_nowcast_stratum <- function(evd,
     seq_along(zones),
     function(i) {
       zone <- zones[[i]]
+      prov <- if (!is.null(zone_province_lookup)) {
+        match_row <- zone_province_lookup$province[zone_province_lookup$zone_sante_notification == zone]
+        if (length(match_row) > 0L && !is.na(match_row[[1L]])) {
+          match_row[[1L]]
+        } else {
+          NA_character_
+        }
+      } else {
+        NA_character_
+      }
+
       counts <- tryCatch(
         if (series == "confirmed_deaths") {
           build_confirmed_death_daily(
@@ -752,7 +892,7 @@ compute_nowcast_stratum <- function(evd,
         error = function(e) NULL
       )
       if (is.null(counts)) {
-        return(empty_zone_nowcast(zone, ref_date, max_delay, "no_series"))
+        return(empty_zone_nowcast(zone, ref_date, max_delay, "no_series", province = prov, province_col = province_col))
       }
 
       recent_n <- sum(
@@ -802,25 +942,30 @@ compute_nowcast_stratum <- function(evd,
             error = function(e) NULL
           )
           if (!is.null(tidy)) {
-            return(
-              tidy |>
-                dplyr::filter(.data$date >= ref_date - max_delay + 1L) |>
-                dplyr::mutate(
-                  zone_sante_notification = zone,
-                  method = "epinow2",
-                  status = "fit_ok"
-                ) |>
-                dplyr::select(
-                  "zone_sante_notification",
-                  "date",
-                  "observed",
-                  "nowcast_median",
-                  "nowcast_lower_90",
-                  "nowcast_upper_90",
-                  "method",
-                  "status"
-                )
-            )
+            tidy_out <- tidy |>
+              dplyr::filter(.data$date >= ref_date - max_delay + 1L) |>
+              dplyr::mutate(
+                province_notification = prov,
+                zone_sante_notification = zone,
+                method = "epinow2",
+                status = "fit_ok"
+              )
+            if (!is.null(province_col) && province_col != "province_notification" && !province_col %in% names(tidy_out)) {
+              tidy_out[[province_col]] <- prov
+            }
+            out_cols <- unique(c(
+              "province_notification",
+              if (!is.null(province_col) && province_col != "province_notification") province_col,
+              "zone_sante_notification",
+              "date",
+              "observed",
+              "nowcast_median",
+              "nowcast_lower_90",
+              "nowcast_upper_90",
+              "method",
+              "status"
+            ))
+            return(tidy_out |> dplyr::select(dplyr::all_of(out_cols)))
           }
         }
         return(
@@ -830,7 +975,9 @@ compute_nowcast_stratum <- function(evd,
             ref_date,
             max_delay,
             zone,
-            "fit_error"
+            "fit_error",
+            province = prov,
+            province_col = province_col
           )
         )
       }
@@ -841,7 +988,9 @@ compute_nowcast_stratum <- function(evd,
         ref_date,
         max_delay,
         zone,
-        if (recent_n == 0L) "no_recent_cases" else "below_min_cases"
+        if (recent_n == 0L) "no_recent_cases" else "below_min_cases",
+        province = prov,
+        province_col = province_col
       )
     }
   )
@@ -892,8 +1041,14 @@ compute_nowcast_stratum <- function(evd,
 
 #' Empty nowcast row set for zones without a usable series
 #' @noRd
-empty_zone_nowcast <- function(zone, ref_date, max_delay, status) {
-  tibble::tibble(
+empty_zone_nowcast <- function(zone,
+                               ref_date,
+                               max_delay,
+                               status,
+                               province = NA_character_,
+                               province_col = "province_notification") {
+  df <- tibble::tibble(
+    province_notification = province,
     zone_sante_notification = zone,
     date = seq.Date(ref_date - max_delay + 1L, ref_date, by = "day"),
     observed = NA_integer_,
@@ -903,6 +1058,22 @@ empty_zone_nowcast <- function(zone, ref_date, max_delay, status) {
     method = "none",
     status = status
   )
+  if (!is.null(province_col) && province_col != "province_notification" && !province_col %in% names(df)) {
+    df[[province_col]] <- province
+  }
+  out_cols <- unique(c(
+    "province_notification",
+    if (!is.null(province_col) && province_col != "province_notification") province_col,
+    "zone_sante_notification",
+    "date",
+    "observed",
+    "nowcast_median",
+    "nowcast_lower_90",
+    "nowcast_upper_90",
+    "method",
+    "status"
+  ))
+  df |> dplyr::select(dplyr::all_of(out_cols))
 }
 
 #' Aggregate the nowcast tail delta for one or all zones
@@ -931,17 +1102,91 @@ nowcast_total_delta <- function(nowcasts, zone = NULL, through_date = NULL) {
       dplyr::filter(.data$date <= through_date)
   }
 
+  delta_by_cols <- c("zone_sante_notification", intersect(c("province_notification", "province"), names(nowcasts)))
+
   nowcasts |>
     dplyr::summarise(
       tail_observed = sum(.data$observed, na.rm = TRUE),
       tail_nowcast_median = sum(.data$nowcast_median, na.rm = TRUE),
       tail_nowcast_lower = sum(.data$nowcast_lower_90, na.rm = TRUE),
       tail_nowcast_upper = sum(.data$nowcast_upper_90, na.rm = TRUE),
-      .by = "zone_sante_notification"
+      .by = dplyr::all_of(delta_by_cols)
     ) |>
     dplyr::mutate(
       delta_median = pmax(0, .data$tail_nowcast_median - .data$tail_observed),
       delta_lower = pmax(0, .data$tail_nowcast_lower - .data$tail_observed),
       delta_upper = pmax(0, .data$tail_nowcast_upper - .data$tail_observed)
     )
+}
+
+#' Aggregate nowcasts by province and date
+#'
+#' Sums observed cases and nowcast estimates across all health zones within
+#' each province for each date in the nowcast tail.
+#'
+#' @param nowcasts Tibble from `compute_nowcasts_by_zone()`.
+#' @param province_col Character. Province column name; defaults to
+#'   `"province_notification"`.
+#'
+#' @return Tibble with columns `province_notification`, `date`, `observed`,
+#'   `nowcast_median`, `nowcast_lower_90`, `nowcast_upper_90`, `n_zones`.
+#' @export
+aggregate_nowcasts_by_province <- function(nowcasts,
+                                           province_col = "province_notification") {
+  prov_col <- if (province_col %in% names(nowcasts)) {
+    province_col
+  } else if ("province_notification" %in% names(nowcasts)) {
+    "province_notification"
+  } else if ("province" %in% names(nowcasts)) {
+    "province"
+  } else if ("Province" %in% names(nowcasts)) {
+    "Province"
+  } else {
+    rlang::abort(
+      sprintf(
+        "`nowcasts` has no province column matching '%s' (available: %s).",
+        province_col,
+        paste(names(nowcasts), collapse = ", ")
+      )
+    )
+  }
+
+  alert_required_columns(
+    nowcasts,
+    c("date", "observed", "nowcast_median"),
+    "aggregate_nowcasts_by_province()"
+  )
+
+  attrs <- attributes(nowcasts)
+
+  res <- nowcasts |>
+    dplyr::summarise(
+      observed = sum(.data$observed, na.rm = TRUE),
+      nowcast_median = sum(.data$nowcast_median, na.rm = TRUE),
+      nowcast_lower_90 = if ("nowcast_lower_90" %in% names(nowcasts)) {
+        sum(.data$nowcast_lower_90, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      nowcast_upper_90 = if ("nowcast_upper_90" %in% names(nowcasts)) {
+        sum(.data$nowcast_upper_90, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      n_zones = if ("zone_sante_notification" %in% names(nowcasts)) {
+        dplyr::n_distinct(.data$zone_sante_notification)
+      } else {
+        1L
+      },
+      .by = c(dplyr::all_of(prov_col), "date")
+    ) |>
+    dplyr::arrange(.data[[prov_col]], .data$date)
+
+  for (a in names(attrs)) {
+    if (!a %in% c("names", "row.names", "class")) {
+      attr(res, a) <- attrs[[a]]
+    }
+  }
+
+  res
 }

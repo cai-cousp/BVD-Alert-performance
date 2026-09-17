@@ -267,7 +267,7 @@ if (has_ensemble) {
   }
 
   if (interactive()) {
-    trends_smooth_adeq |> View()
+    # trends_smooth_adeq |> View()
   }
 
   # Death alerts: Ensemble

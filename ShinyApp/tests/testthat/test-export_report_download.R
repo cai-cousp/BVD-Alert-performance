@@ -76,22 +76,53 @@ test_that("find_alert_report_html returns NULL when no template is found", {
   expect_null(result)
 })
 
-test_that("export_ui generates download_report button with arrow icon and correct label", {
+test_that("find_alert_methods_html locates methods_note_alert_thresholds_fr.html in docs/methods or shiny_root", {
+  skip_if(is.na(shiny_root), message = "shiny_root could not be resolved")
+
+  found_path <- find_alert_methods_html(shiny_root)
+
+  expect_false(is.null(found_path))
+  expect_true(file.exists(found_path))
+  expect_true(grepl("methods_note_alert_thresholds_fr\\.html$", found_path))
+})
+
+test_that("find_alert_methods_html returns NULL when no document is found", {
+  temp_dir <- tempfile("test_empty_app_dir_")
+  dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  result <- withr::with_dir(temp_dir, {
+    find_alert_methods_html(app_directory = temp_dir)
+  })
+
+  expect_null(result)
+})
+
+test_that("export_ui generates consult report and consult methods buttons with correct links and icons", {
   # Act
   ui_tags <- export_ui("export")
   ui_str <- as.character(htmltools::as.tags(ui_tags))
 
   # Assert
-  expect_true(grepl("export-download_report", ui_str))
-  expect_true(grepl("T[ée]l[ée]charger le rapport \\(HTML\\)", ui_str))
-  expect_true(grepl("file-earmark-arrow-down|download", ui_str))
+  expect_true(grepl("export-view_report", ui_str))
+  expect_true(grepl("Consulter le rapport", ui_str))
   expect_true(grepl("Alert_performance_report\\.html", ui_str))
+
+  expect_true(grepl("export-view_methods", ui_str))
+  expect_true(grepl("Consulter la note m[ée]thodologique", ui_str))
+  expect_true(grepl("methods_note_alert_thresholds_fr\\.html", ui_str))
+
+  expect_true(grepl("export-open_browser_report", ui_str))
+  expect_true(grepl("export-open_browser_methods", ui_str))
+
+  # Obsolete download buttons are removed
+  expect_false(grepl("export-download_report", ui_str))
+  expect_false(grepl("export-download_data", ui_str))
 })
 
-test_that("export module downloadHandler serves Alert_performance_report.html with exact filename", {
+test_that("export module server initialises without download_report or download_data handlers", {
   skip_if(is.na(shiny_root), message = "shiny_root could not be resolved")
 
-  # Arrange: Mock minimal filters
   dummy_filters <- list(
     date_range = function() c(as.Date("2026-01-01"), as.Date("2026-06-01")),
     selected_hzs = function() character(0),
@@ -99,19 +130,9 @@ test_that("export module downloadHandler serves Alert_performance_report.html wi
     adequacy_filter = function() c("adequate", "inadequate")
   )
 
-  # Act: run module server test with testServer
   shiny::testServer(export_server, args = list(filters = dummy_filters), {
-    dl_path <- output[["download_report"]]
-
-    # Assert: download handler executed and returned destination path
-    expect_type(dl_path, "character")
-    expect_equal(basename(dl_path), "Alert_performance_report.html")
-    expect_true(file.exists(dl_path))
-    expect_gt(file.size(dl_path), 1000L)
-
-    # Check HTML signature
-    first_line <- readLines(dl_path, n = 1, warn = FALSE)
-    expect_true(grepl("<!DOCTYPE html>|<html", first_line, ignore.case = TRUE))
+    expect_error(output[["download_report"]], "hasn't been defined yet")
+    expect_error(output[["download_data"]], "hasn't been defined yet")
   })
 })
 

@@ -47,6 +47,9 @@ compute_alert_multipliers <- function(
     ref_date = NULL,
     max_delay = 21L,
     overdispersion_threshold = 1.5,
+    min_total_exposure = 1.0,
+    min_weekly_exposure = 0.1,
+    beta_max = 25.0,
     lag_to_notification = TRUE) {
   alert_required_columns(
     val_alerts,
@@ -367,7 +370,10 @@ compute_alert_multipliers <- function(
         model = "case",
         min_model_weeks = min_model_weeks,
         confidence_level = confidence_level,
-        overdispersion_threshold = overdispersion_threshold
+        overdispersion_threshold = overdispersion_threshold,
+        min_total_exposure = min_total_exposure,
+        min_weekly_exposure = min_weekly_exposure,
+        beta_max = beta_max
       )
     }
   )
@@ -383,7 +389,10 @@ compute_alert_multipliers <- function(
         model = "death",
         min_model_weeks = min_model_weeks,
         confidence_level = confidence_level,
-        overdispersion_threshold = overdispersion_threshold
+        overdispersion_threshold = overdispersion_threshold,
+        min_total_exposure = min_total_exposure,
+        min_weekly_exposure = min_weekly_exposure,
+        beta_max = min(beta_max, 20.0)
       )
     }
   )
@@ -782,7 +791,10 @@ fit_poisson_offset_rate <- function(data,
                                     model,
                                     min_model_weeks,
                                     confidence_level,
-                                    overdispersion_threshold = 1.5) {
+                                    overdispersion_threshold = 1.5,
+                                    min_total_exposure = 1.0,
+                                    min_weekly_exposure = 0.1,
+                                    beta_max = if (identical(model, "death")) 20.0 else 25.0) {
   zone <- data$zone_sante_notification[[1L]]
   n_weeks <- sum(!is.na(data$week_bin))
 
@@ -792,7 +804,7 @@ fit_poisson_offset_rate <- function(data,
       is.finite(.data[[count_col]]),
       .data[[count_col]] >= 0,
       is.finite(.data[[exposure_col]]),
-      .data[[exposure_col]] > 0
+      .data[[exposure_col]] >= min_weekly_exposure
     )
 
   n_model_weeks <- nrow(model_data)
@@ -819,18 +831,34 @@ fit_poisson_offset_rate <- function(data,
     confidence_level = confidence_level
   )
 
-  if (n_model_weeks < min_model_weeks) {
+  if (total_exposure < min_total_exposure || n_model_weeks < min_model_weeks) {
+    beta <- rate
+    beta_low <- exact_ci[["low"]]
+    beta_high <- exact_ci[["high"]]
+    status <- if (total_exposure < min_total_exposure) {
+      "sparse_exposure_ratio_fallback"
+    } else {
+      "insufficient_weeks_ratio_fallback"
+    }
+
+    if (is.finite(beta) && is.finite(beta_max) && beta > beta_max) {
+      beta_high <- max(beta_max, min(beta_high, beta_max * 1.5))
+      beta_low <- min(beta_low, beta_max)
+      beta <- beta_max
+      status <- paste0(status, "_capped")
+    }
+
     return(rate_result(
       zone = zone,
       model = model,
-      beta = rate,
-      beta_low = exact_ci[["low"]],
-      beta_high = exact_ci[["high"]],
+      beta = beta,
+      beta_low = beta_low,
+      beta_high = beta_high,
       n_weeks = n_weeks,
       n_model_weeks = n_model_weeks,
       total_count = total_count,
       total_exposure = total_exposure,
-      model_status = "insufficient_weeks_ratio_fallback"
+      model_status = status
     ))
   }
 
@@ -865,17 +893,29 @@ fit_poisson_offset_rate <- function(data,
   )
 
   if (inherits(fit, "error")) {
+    beta <- rate
+    beta_low <- exact_ci[["low"]]
+    beta_high <- exact_ci[["high"]]
+    status <- "glm_failed_ratio_fallback"
+
+    if (is.finite(beta) && is.finite(beta_max) && beta > beta_max) {
+      beta_high <- max(beta_max, min(beta_high, beta_max * 1.5))
+      beta_low <- min(beta_low, beta_max)
+      beta <- beta_max
+      status <- paste0(status, "_capped")
+    }
+
     return(rate_result(
       zone = zone,
       model = model,
-      beta = rate,
-      beta_low = exact_ci[["low"]],
-      beta_high = exact_ci[["high"]],
+      beta = beta,
+      beta_low = beta_low,
+      beta_high = beta_high,
       n_weeks = n_weeks,
       n_model_weeks = n_model_weeks,
       total_count = total_count,
       total_exposure = total_exposure,
-      model_status = "glm_failed_ratio_fallback"
+      model_status = status
     ))
   }
 
@@ -928,6 +968,14 @@ fit_poisson_offset_rate <- function(data,
       beta <- exp(negbin_coef)
       beta_low <- exp(negbin_coef - z * negbin_se)
       beta_high <- exp(negbin_coef + z * negbin_se)
+      status <- "negative_binomial"
+
+      if (is.finite(beta) && is.finite(beta_max) && beta > beta_max) {
+        beta_high <- max(beta_max, min(beta_high, beta_max * 1.5))
+        beta_low <- min(beta_low, beta_max)
+        beta <- beta_max
+        status <- paste0(status, "_capped")
+      }
 
       return(rate_result(
         zone = zone,
@@ -943,7 +991,7 @@ fit_poisson_offset_rate <- function(data,
         n_model_weeks = n_model_weeks,
         total_count = total_count,
         total_exposure = total_exposure,
-        model_status = "negative_binomial"
+        model_status = status
       ))
     }
   }
@@ -965,6 +1013,15 @@ fit_poisson_offset_rate <- function(data,
     beta_high <- exact_ci[["high"]]
   }
 
+  status <- if (use_negbin) "negbin_failed_quasi_poisson" else "poisson_offset"
+
+  if (is.finite(beta) && is.finite(beta_max) && beta > beta_max) {
+    beta_high <- max(beta_max, min(beta_high, beta_max * 1.5))
+    beta_low <- min(beta_low, beta_max)
+    beta <- beta_max
+    status <- paste0(status, "_capped")
+  }
+
   rate_result(
     zone = zone,
     model = model,
@@ -978,7 +1035,7 @@ fit_poisson_offset_rate <- function(data,
     n_model_weeks = n_model_weeks,
     total_count = total_count,
     total_exposure = total_exposure,
-    model_status = if (use_negbin) "negbin_failed_quasi_poisson" else "poisson_offset"
+    model_status = status
   )
 }
 

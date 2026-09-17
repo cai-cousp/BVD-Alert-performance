@@ -158,9 +158,9 @@ test_that("trends_server serves valid XLSX for download_map_table1 and download_
 })
 
 # -----------------------------------------------------------------------------
-# 3. Export Module Data & Report Downloads
+# 3. Export Module Handlers Check
 # -----------------------------------------------------------------------------
-test_that("export_server serves valid XLSX for download_data and CSV for download_csv", {
+test_that("export_server does not expose download_data or download_report handlers", {
   skip_if(is.na(shiny_root), message = "shiny_root could not be resolved")
 
   dummy_filters <- list(
@@ -171,17 +171,7 @@ test_that("export_server serves valid XLSX for download_data and CSV for downloa
   )
 
   shiny::testServer(export_server, args = list(filters = dummy_filters), {
-    data_path <- output[["download_data"]]
-    csv_path  <- output[["download_csv"]]
-
-    expect_type(data_path, "character")
-    expect_true(file.exists(data_path))
-    expect_gt(file.size(data_path), 1000L)
-    expect_match(basename(data_path), "^BVD_Alert_Data_.*\\.xlsx$")
-
-    expect_type(csv_path, "character")
-    expect_true(file.exists(csv_path))
-    expect_gt(file.size(csv_path), 500L)
-    expect_match(basename(csv_path), "^BVD_Alert_Trends_.*\\.csv$")
+    expect_error(output[["download_data"]], "hasn't been defined yet")
+    expect_error(output[["download_report"]], "hasn't been defined yet")
   })
 })

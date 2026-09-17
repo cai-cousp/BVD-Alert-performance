@@ -67,11 +67,18 @@ message("Data folder:   ", data_folder)
 message("Maps base:     ", maps_base_dir)
 message("Map directory: ", map_dir)
 
-# --- Register pre-rendered report resource path for desktop Shiny -----------
+# --- Register pre-rendered report & methods resource paths for desktop Shiny -
 report_dir <- file.path(root_dir, "docs", "reports")
 if (dir.exists(report_dir)) {
   tryCatch(
     shiny::addResourcePath("reports", report_dir),
+    error = function(e) NULL
+  )
+}
+methods_dir <- file.path(root_dir, "docs", "methods")
+if (dir.exists(methods_dir)) {
+  tryCatch(
+    shiny::addResourcePath("methods", methods_dir),
     error = function(e) NULL
   )
 }
@@ -509,6 +516,14 @@ time_window_choices <- stats::setNames(
   all_time_windows,
   format(as.Date(all_time_windows), "%d %b %Y")
 )
+
+# Dataset "as-of" date
+dataset_date <- if (exists("resolve_source_date", mode = "function")) {
+  resolve_source_date(trends_smooth_adeq)
+} else {
+  max(as.Date(all_time_windows), na.rm = TRUE) + 6L
+}
+dataset_date_formatted <- format(dataset_date, "%d-%m-%Y")
 
 # Adequacy color palette
 adequacy_colors <- c(

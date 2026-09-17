@@ -146,7 +146,13 @@ prepare_trend_data <- function(data = NULL, data_path = NULL, hz = NULL,
   }
 
   out <- data |>
-    dplyr::mutate(date = as.Date(threshold_time_key)) |>
+    dplyr::mutate(
+      date = if ("threshold_valid_to" %in% names(data)) {
+        dplyr::coalesce(as.Date(threshold_valid_to), as.Date(threshold_time_key) + 6L)
+      } else {
+        as.Date(threshold_time_key) + 6L
+      }
+    ) |>
     dplyr::filter(!is.na(.data$date))
 
   if (!is.null(start_date)) {
@@ -451,7 +457,7 @@ plot_alert_trends <- function(
       ),
       tooltip_text = paste0(
         "Zone de santé : ", zone_sante_notification,
-        "\nSemaine de notification (début) : ", format(date, "%d/%m/%Y"),
+        "\nSemaine de notification (fin) : ", format(date, "%d/%m/%Y"),
         "\n", cols$label, " : ", .data[[cols$y]],
         "\nSeuil attendu : [", round(.data[[cols$lower]], 1),
         " - ", round(.data[[cols$upper]], 1), "]",
@@ -602,7 +608,7 @@ plot_alert_trends <- function(
     labs(
       title = sprintf("Tendances des %s vs. seuils attendus", metric_title_label),
       subtitle = subtitle_text,
-      x = "Semaine de notification (date de début)",
+      x = "Semaine de notification (date de fin)",
       y = y_label,
       caption = sprintf("Source : DHIS2 Tracker - %s", format_dmy(caption_date))
     ) +
@@ -963,7 +969,7 @@ build_plotly_alert_trends <- function(data, metric = c("case", "death"),
       ),
       tooltip_text = paste0(
         "Zone de santé : ", zone_sante_notification,
-        "\nSemaine de notification (début) : ", format(date, "%d/%m/%Y"),
+        "\nSemaine de notification (fin) : ", format(date, "%d/%m/%Y"),
         "\n", cols$label, " : ", .data[[cols$y]],
         "\nSeuil attendu : [", round(.data[[cols$lower]], 1),
         " - ", round(.data[[cols$upper]], 1), "]",
@@ -1105,7 +1111,7 @@ build_plotly_alert_trends <- function(data, metric = c("case", "death"),
 
     unique_dates <- sort(unique(df$date))
     xaxis_cfg <- list(
-      title = "Semaine de notification (date de début)",
+      title = "Semaine de notification (date de fin)",
       tickmode = "array",
       tickvals = unique_dates,
       ticktext = format(unique_dates, "%d-%m\n%Y"),
@@ -1309,7 +1315,13 @@ prepare_adequacy_data <- function(data = NULL, data_path = NULL, hz = NULL,
   }
 
   out <- data |>
-    dplyr::mutate(date = as.Date(threshold_time_key)) |>
+    dplyr::mutate(
+      date = if ("threshold_valid_to" %in% names(data)) {
+        dplyr::coalesce(as.Date(threshold_valid_to), as.Date(threshold_time_key) + 6L)
+      } else {
+        as.Date(threshold_time_key) + 6L
+      }
+    ) |>
     dplyr::filter(!is.na(.data$date))
 
   if (!is.null(start_date)) {
@@ -1464,7 +1476,7 @@ plot_adequacy_stacked <- function(
       dplyr::mutate(
         tooltip_text = paste0(
           "Zone de santé : ", zone_sante_notification,
-          "\nSemaine de notification (début) : ", format(date, "%d/%m/%Y"),
+          "\nSemaine de notification (fin) : ", format(date, "%d/%m/%Y"),
           "\n", metric_label, " : ", ifelse(is.na(adequacy), "N/A", paste0(round(adequacy * 100, 0), "%"))
         )
       )
@@ -1547,7 +1559,7 @@ plot_adequacy_stacked <- function(
     labs(
       title = title_text,
       subtitle = NULL,
-      x = "Semaine de notification (date de début)",
+      x = "Semaine de notification (date de fin)",
       y = "Performance (% du seuil)",
       caption = paste0(
         sprintf("Source : DHIS2 Tracker - %s", format_dmy(caption_date)),
@@ -1737,7 +1749,7 @@ plot_adequacy_stacked_interactive <- function(...,
     dplyr::mutate(
       tooltip_text = paste0(
         "Zone de santé : ", zone_sante_notification,
-        "\nSemaine de notification (début) : ", format(date, "%d/%m/%Y"),
+        "\nSemaine de notification (fin) : ", format(date, "%d/%m/%Y"),
         if (metric %in% c("all", "case")) paste0("\nPerformance alertes vivants : ", ifelse(is.na(case_adequacy), "N/A", paste0(round(case_adequacy * 100, 0), "%"))) else "",
         if (metric %in% c("all", "death")) paste0("\nPerformance alertes décès : ", ifelse(is.na(death_adequacy), "N/A", paste0(round(death_adequacy * 100, 0), "%"))) else "",
         if (has_aai) paste0("\nPerformance globale : ", ifelse(is.na(aai), "N/A", paste0(round(aai * 100, 0), "%"))) else ""
@@ -1820,7 +1832,7 @@ plot_adequacy_stacked_interactive <- function(...,
 
     unique_dates <- sort(unique(df$date))
     xaxis_cfg <- list(
-      title = "Semaine de notification (date de début)",
+      title = "Semaine de notification (date de fin)",
       tickmode = "array",
       tickvals = unique_dates,
       ticktext = format(unique_dates, "%d-%m\n%Y"),

@@ -192,6 +192,12 @@ splice_nowcast_tail <- function(counts,
   if (!is.null(zone) && "zone_sante_notification" %in% names(tail_nowcasts)) {
     tail_nowcasts <- tail_nowcasts |>
       dplyr::filter(.data$zone_sante_notification == zone)
+  } else if ("date" %in% names(tail_nowcasts) && anyDuplicated(tail_nowcasts$date)) {
+    tail_nowcasts <- tail_nowcasts |>
+      dplyr::summarise(
+        nowcast_median = sum(.data$nowcast_median, na.rm = TRUE),
+        .by = "date"
+      )
   }
   if (nrow(tail_nowcasts) == 0L) {
     return(counts)
