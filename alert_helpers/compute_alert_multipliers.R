@@ -1,12 +1,14 @@
 #' Compute Case and Death Alert Multipliers (βc and βd)
 #'
 #' `beta_c` and `beta_d` are estimated within each health zone from
-#' HZ-week-level Poisson offset models. Weekly true-case exposure is derived
-#' by allocating each HZ's total estimated true cases across weeks in
-#' proportion to detected confirmed/positive cases.
+#' HZ-week-level Poisson offset models. Weekly all-case exposure is allocated
+#' in proportion to detected confirmed/positive cases. When alive exposure is
+#' supplied, `beta_c` uses estimated true alive cases; `beta_d` continues to
+#' use expected deaths derived from all confirmed cases and CFR.
 #'
 #' @param val_alerts Dataframe. Validated alerts.
-#' @param true_cases Dataframe. Estimated true cases per HZ.
+#' @param true_cases Dataframe. Estimated true cases per HZ. It should also
+#'   contain `estimated_true_alive_cases_recent` for status-specific fitting.
 #' @param hz_cfr Dataframe. Case fatality rates per HZ.
 #' @param evd Dataframe. Full EVD line list used to derive weekly exposure.
 #' @param alert_date_col Character. Date column for validated alert counts.
@@ -23,6 +25,9 @@
 #'   legacy fallback.
 #' @param nowcast Dataframe. Optional nowcast table from
 #'   `compute_nowcasts_by_zone()`.
+#' @param nowcast_alive Dataframe. Optional confirmed-alive nowcast table used
+#'   to allocate alive exposure. Supplying this without an alive exposure in
+#'   `true_cases` still uses all-case exposure for legacy callers.
 #' @param ref_date Date. Optional explicit nowcast reference date.
 #' @param max_delay Integer. Nowcast horizon in days.
 #' @param overdispersion_threshold Numeric. Dispersion ratio
@@ -32,30 +37,48 @@
 #' @return Tibble with one row per HZ. Attributes `weekly_model_data` and
 #'   `model_summary` contain diagnostics.
 compute_alert_multipliers <- function(
-    val_alerts,
-    true_cases,
-    hz_cfr,
-    evd = val_alerts,
-    alert_date_col = "date_heure_notification_alerte",
-    case_date_col = "alert_date_debut_symptoms",
-    fallback_date_col = "s2_date_debut_signes_symptomes",
-    min_model_weeks = 2L,
-    confidence_level = 0.95,
-    use_full_window = FALSE,
-    windows = NULL,
-    nowcast = NULL,
-    ref_date = NULL,
-    max_delay = 21L,
-    overdispersion_threshold = 1.5,
-    min_total_exposure = 1.0,
-    min_weekly_exposure = 0.1,
-    beta_max = 25.0,
-    lag_to_notification = TRUE) {
+  val_alerts,
+  true_cases,
+  hz_cfr,
+  evd = val_alerts,
+  alert_date_col = "date_heure_notification_alerte",
+  case_date_col = "alert_date_debut_symptoms",
+  fallback_date_col = "s2_date_debut_signes_symptomes",
+  min_model_weeks = 2L,
+  confidence_level = 0.95,
+  use_full_window = FALSE,
+  windows = NULL,
+  nowcast = NULL,
+  nowcast_alive = NULL,
+  ref_date = NULL,
+  max_delay = 21L,
+  overdispersion_threshold = 1.5,
+  min_total_exposure = 1.0,
+  min_weekly_exposure = 0.1,
+  beta_max = 25.0,
+  lag_to_notification = TRUE
+) {
   alert_required_columns(
     val_alerts,
     c("zone_sante_notification", "nature_alerte", alert_date_col),
     "compute_alert_multipliers()"
   )
+
+  has_alive_exposure <- "estimated_true_alive_cases_recent" %in%
+    names(true_cases)
+  if (!is.null(nowcast_alive)) {
+    alert_required_columns(
+      nowcast_alive,
+      c(
+        "zone_sante_notification", "date", "observed", "nowcast_median",
+        "nowcast_lower_90", "nowcast_upper_90"
+      ),
+      "compute_alert_multipliers()"
+    )
+    if (!identical(attr(nowcast_alive, "series"), "confirmed_alive")) {
+      rlang::abort("`nowcast_alive` must have series 'confirmed_alive'.")
+    }
+  }
   alert_required_columns(
     true_cases,
     c("zone_sante_notification", "estimated_true_cases_recent"),
@@ -88,6 +111,7 @@ compute_alert_multipliers <- function(
     dplyr::select(
       zone_sante_notification,
       estimated_true_cases_recent,
+      dplyr::any_of("estimated_true_alive_cases_recent"),
       dplyr::any_of(c(
         "threshold_time_key",
         "recent_case_window_start",
@@ -98,7 +122,12 @@ compute_alert_multipliers <- function(
       dplyr::across(
         dplyr::any_of(c("recent_case_window_start", "recent_case_window_end")),
         as.Date
-      )
+      ),
+      estimated_true_alive_cases_recent = if (has_alive_exposure) {
+        estimated_true_alive_cases_recent
+      } else {
+        estimated_true_cases_recent
+      }
     )
 
   # Resolve the analysis grid used to bin the weekly model data (harmonized
@@ -193,8 +222,8 @@ compute_alert_multipliers <- function(
     }
     apply_nowcast <-
       is.finite(as.Date(nowcast_ref)) &&
-      is.finite(window_end_max) &&
-      window_end_max >= as.Date(nowcast_ref) - max_delay + 1L
+        is.finite(window_end_max) &&
+        window_end_max >= as.Date(nowcast_ref) - max_delay + 1L
   }
 
   if (apply_nowcast) {
@@ -220,7 +249,7 @@ compute_alert_multipliers <- function(
       )
 
     delta_join_by <- if (all(c("threshold_time_key") %in% names(confirmed_weekly)) &&
-                         all(c("threshold_time_key") %in% names(week_delta))) {
+      all(c("threshold_time_key") %in% names(week_delta))) {
       dplyr::join_by(zone_sante_notification, week_bin, threshold_time_key)
     } else {
       dplyr::join_by(zone_sante_notification, week_bin)
@@ -265,6 +294,154 @@ compute_alert_multipliers <- function(
       )
   }
 
+  if (has_alive_exposure || !is.null(nowcast_alive)) {
+    confirmed_alive_weekly <- evd |>
+      dplyr::mutate(
+        onset_date = alert_resolve_onset_date(
+          evd,
+          onset_col = case_date_col,
+          fallback_onset_cols = fallback_date_col
+        ),
+        notif_date = alert_resolve_notification_date(
+          evd,
+          notification_col = alert_date_col
+        ),
+        case_date = if (isTRUE(lag_to_notification)) {
+          dplyr::coalesce(notif_date, onset_date)
+        } else {
+          onset_date
+        },
+        is_confirmed = alert_is_confirmed_case(evd),
+        is_alive = alert_is_alive(evd)
+      ) |>
+      dplyr::filter(
+        is_confirmed,
+        is_alive,
+        !is.na(zone_sante_notification),
+        !is.na(case_date)
+      )
+
+    if (!use_full_window && is.null(windows)) {
+      confirmed_alive_weekly <- confirmed_alive_weekly |>
+        filter_dated_to_true_case_window(
+          hz_parameters = hz_parameters,
+          date_col = "case_date"
+        )
+    }
+
+    confirmed_alive_weekly <- confirmed_alive_weekly |>
+      bin_weekly_events(windows, "case_date")
+
+    alive_count_by <- c("zone_sante_notification", "week_bin")
+    if ("threshold_time_key" %in% names(confirmed_alive_weekly)) {
+      alive_count_by <- c(alive_count_by, "threshold_time_key")
+    }
+
+    confirmed_alive_weekly <- confirmed_alive_weekly |>
+      dplyr::summarise(
+        confirmed_alive_cases_week = dplyr::n(),
+        .by = dplyr::all_of(alive_count_by)
+      )
+
+    apply_alive_nowcast <- !is.null(nowcast_alive) &&
+      nrow(nowcast_alive) > 0L
+    if (apply_alive_nowcast) {
+      alive_nowcast_ref <- ref_date
+      if (is.null(alive_nowcast_ref)) {
+        alive_nowcast_ref <- attr(nowcast_alive, "ref_date")
+      }
+      if (is.null(alive_nowcast_ref)) {
+        alive_nowcast_ref <- max(nowcast_alive$date, na.rm = TRUE)
+      }
+      alive_window_end_max <- if (
+        "recent_case_window_end" %in% names(hz_parameters)
+      ) {
+        max(as.Date(hz_parameters$recent_case_window_end), na.rm = TRUE)
+      } else {
+        as.Date(alive_nowcast_ref)
+      }
+      apply_alive_nowcast <-
+        is.finite(as.Date(alive_nowcast_ref)) &&
+          is.finite(alive_window_end_max) &&
+          alive_window_end_max >=
+            as.Date(alive_nowcast_ref) - max_delay + 1L
+    }
+
+    if (apply_alive_nowcast) {
+      alive_week_delta <- nowcast_alive |>
+        dplyr::mutate(
+          delta = pmax(.data$nowcast_median - .data$observed, 0),
+          delta_low = pmax(.data$nowcast_lower_90 - .data$observed, 0),
+          delta_high = pmax(.data$nowcast_upper_90 - .data$observed, 0)
+        ) |>
+        bin_weekly_events(windows, "date")
+
+      alive_delta_count_by <- c("zone_sante_notification", "week_bin")
+      if ("threshold_time_key" %in% names(alive_week_delta)) {
+        alive_delta_count_by <- c(alive_delta_count_by, "threshold_time_key")
+      }
+
+      alive_week_delta <- alive_week_delta |>
+        dplyr::summarise(
+          delta = sum(.data$delta, na.rm = TRUE),
+          delta_low = sum(.data$delta_low, na.rm = TRUE),
+          delta_high = sum(.data$delta_high, na.rm = TRUE),
+          .by = dplyr::all_of(alive_delta_count_by)
+        )
+
+      alive_delta_join_by <- if (
+        all(c("threshold_time_key") %in% names(confirmed_alive_weekly)) &&
+          all(c("threshold_time_key") %in% names(alive_week_delta))
+      ) {
+        dplyr::join_by(zone_sante_notification, week_bin, threshold_time_key)
+      } else {
+        dplyr::join_by(zone_sante_notification, week_bin)
+      }
+
+      confirmed_alive_weekly <- confirmed_alive_weekly |>
+        dplyr::full_join(
+          alive_week_delta,
+          by = alive_delta_join_by
+        ) |>
+        dplyr::mutate(
+          confirmed_alive_cases_week = tidyr::replace_na(
+            .data$confirmed_alive_cases_week,
+            0L
+          ),
+          confirmed_alive_cases_week_nowcast = dplyr::if_else(
+            !is.na(.data$delta),
+            as.double(.data$confirmed_alive_cases_week) + .data$delta,
+            NA_real_
+          ),
+          confirmed_alive_cases_week_nowcast_low = dplyr::if_else(
+            !is.na(.data$delta_low),
+            as.double(.data$confirmed_alive_cases_week) + .data$delta_low,
+            NA_real_
+          ),
+          confirmed_alive_cases_week_nowcast_high = dplyr::if_else(
+            !is.na(.data$delta_high),
+            as.double(.data$confirmed_alive_cases_week) + .data$delta_high,
+            NA_real_
+          ),
+          alive_count_source = dplyr::if_else(
+            !is.na(.data$delta),
+            "nowcast",
+            "observed"
+          )
+        ) |>
+        dplyr::select(-c("delta", "delta_low", "delta_high"))
+    } else {
+      confirmed_alive_weekly <- confirmed_alive_weekly |>
+        dplyr::mutate(
+          confirmed_alive_cases_week_nowcast = NA_real_,
+          confirmed_alive_cases_week_nowcast_low = NA_real_,
+          confirmed_alive_cases_week_nowcast_high = NA_real_,
+          alive_count_source = "observed"
+        )
+    }
+  } else {
+    confirmed_alive_weekly <- NULL
+  }
   validated_weekly <- val_alerts |>
     dplyr::mutate(
       alert_date = as.Date(.data[[alert_date_col]])
@@ -302,12 +479,34 @@ compute_alert_multipliers <- function(
   # columns are created.
   model_join_keys <- c("zone_sante_notification", "week_bin")
   if (all(c("threshold_time_key") %in% names(confirmed_weekly)) &&
-      all(c("threshold_time_key") %in% names(validated_weekly))) {
+    all(c("threshold_time_key") %in% names(validated_weekly))) {
     model_join_keys <- c(model_join_keys, "threshold_time_key")
   }
 
+  case_weekly <- if (!is.null(confirmed_alive_weekly)) {
+    dplyr::full_join(
+      confirmed_weekly,
+      confirmed_alive_weekly,
+      by = model_join_keys,
+      relationship = "one-to-one"
+    )
+  } else {
+    confirmed_weekly
+  }
+
+  if (is.null(confirmed_alive_weekly)) {
+    case_weekly <- case_weekly |>
+      dplyr::mutate(
+        confirmed_alive_cases_week = 0L,
+        confirmed_alive_cases_week_nowcast = NA_real_,
+        confirmed_alive_cases_week_nowcast_low = NA_real_,
+        confirmed_alive_cases_week_nowcast_high = NA_real_,
+        alive_count_source = "observed"
+      )
+  }
+
   weekly_model_data <- dplyr::full_join(
-    confirmed_weekly,
+    case_weekly,
     validated_weekly,
     by = model_join_keys,
     relationship = "one-to-one"
@@ -319,38 +518,89 @@ compute_alert_multipliers <- function(
     ) |>
     dplyr::mutate(
       confirmed_cases_week = tidyr::replace_na(confirmed_cases_week, 0L),
+      confirmed_alive_cases_week = tidyr::replace_na(
+        confirmed_alive_cases_week,
+        0L
+      ),
       case_alerts_week = tidyr::replace_na(case_alerts_week, 0L),
       death_alerts_week = tidyr::replace_na(death_alerts_week, 0L),
-      case_count_source = tidyr::replace_na(case_count_source, "observed")
+      case_count_source = tidyr::replace_na(case_count_source, "observed"),
+      alive_count_source = tidyr::replace_na(alive_count_source, "observed")
     ) |>
+    # Weight each week by its share of the health-zone's confirmed counts.
+    # In the tail window where outcome data are sparse, the alive nowcast
+    # can collapse to near-zero while alert notifications keep flowing. To
+    # prevent a degenerate weekly row from dominating the offset-rate fit
+    # (and producing an implausibly large beta_c), weeks whose alive
+    # exposure falls below a per-zone floor are dropped from the model
+    # rather than used at face value.
     dplyr::mutate(
       case_weight_count = dplyr::coalesce(
         confirmed_cases_week_nowcast,
         as.double(confirmed_cases_week)
       ),
+      alive_weight_count = dplyr::coalesce(
+        confirmed_alive_cases_week_nowcast,
+        as.double(confirmed_alive_cases_week)
+      ),
       confirmed_cases_hz = sum(case_weight_count, na.rm = TRUE),
+      confirmed_alive_cases_hz = sum(alive_weight_count, na.rm = TRUE),
       weekly_case_weight = dplyr::if_else(
         confirmed_cases_hz > 0,
         case_weight_count / confirmed_cases_hz,
         NA_real_
       ),
+      weekly_alive_case_weight = dplyr::if_else(
+        confirmed_alive_cases_hz > 0,
+        alive_weight_count / confirmed_alive_cases_hz,
+        NA_real_
+      ),
       estimated_true_cases_week = estimated_true_cases_recent * weekly_case_weight,
+      estimated_true_alive_cases_week = if (has_alive_exposure) {
+        estimated_true_alive_cases_recent * weekly_alive_case_weight
+      } else {
+        estimated_true_cases_week
+      },
+      case_exposure_source = if (has_alive_exposure) {
+        "confirmed_alive"
+      } else {
+        "all_cases_legacy"
+      },
       expected_deaths = estimated_true_cases_recent * cfr_used,
       expected_deaths_week = estimated_true_cases_week * cfr_used,
       case_model_included = !is.na(week_bin) &
-        is.finite(estimated_true_cases_week) &
-        estimated_true_cases_week > 0,
+        is.finite(estimated_true_alive_cases_week) &
+        estimated_true_alive_cases_week > 0,
       death_model_included = !is.na(week_bin) &
         is.finite(expected_deaths_week) &
         expected_deaths_week > 0,
       .by = zone_sante_notification
     ) |>
-    dplyr::select(-case_weight_count) |>
+    # Down-weight or drop weeks whose alive exposure has collapsed relative
+    # to the zone's typical scale (sign of a sparse-nowcast tail artifact).
+    # Keep the week flagged so the model diagnostics reflect which weeks
+    # were excluded and why.
+    dplyr::mutate(
+      zone_median_alive_exposure = stats::median(
+        estimated_true_alive_cases_week,
+        na.rm = TRUE
+      ),
+      alive_exposure_degenerate = estimated_true_alive_cases_week <
+        (0.1 * zone_median_alive_exposure) &
+        zone_median_alive_exposure > 0 &
+        is.finite(zone_median_alive_exposure),
+      case_model_included = case_model_included & !alive_exposure_degenerate,
+      .by = zone_sante_notification
+    ) |>
+    dplyr::select(-c(alive_exposure_degenerate, zone_median_alive_exposure)) |>
     dplyr::arrange(zone_sante_notification, week_bin)
 
   hz_summary <- weekly_model_data |>
     dplyr::summarise(
       estimated_true_cases_recent = alert_first_non_missing(estimated_true_cases_recent),
+      estimated_true_alive_cases_recent = alert_first_non_missing(
+        estimated_true_alive_cases_recent
+      ),
       cfr_used = alert_first_non_missing(cfr_used),
       expected_deaths = alert_first_non_missing(expected_deaths),
       val_alive = sum(case_alerts_week, na.rm = TRUE),
@@ -366,7 +616,7 @@ compute_alert_multipliers <- function(
         data = weekly_model_data |>
           dplyr::filter(zone_sante_notification == .env$hz),
         count_col = "case_alerts_week",
-        exposure_col = "estimated_true_cases_week",
+        exposure_col = "estimated_true_alive_cases_week",
         model = "case",
         min_model_weeks = min_model_weeks,
         confidence_level = confidence_level,
@@ -448,25 +698,27 @@ compute_alert_multipliers <- function(
 #' @return Tibble with one row per HZ per window. Attributes
 #'   `weekly_model_data` and `model_summary` contain window-tagged diagnostics.
 compute_alert_multipliers_by_window <- function(
-    val_alerts,
-    true_cases,
-    hz_cfr,
-    evd = val_alerts,
-    alert_date_col = "date_heure_notification_alerte",
-    case_date_col = "alert_date_debut_symptoms",
-    fallback_date_col = "s2_date_debut_signes_symptomes",
-    min_model_weeks = 2L,
-    confidence_level = 0.95,
-    window_key_col = "threshold_time_key",
-    use_full_window = FALSE,
-    windows = NULL,
-    lookback_weeks = 3L,
-    n_copy_last = 1L,
-    nowcast = NULL,
-    ref_date = NULL,
-    max_delay = 21L,
-    overdispersion_threshold = 1.5,
-    lag_to_notification = TRUE) {
+  val_alerts,
+  true_cases,
+  hz_cfr,
+  evd = val_alerts,
+  alert_date_col = "date_heure_notification_alerte",
+  case_date_col = "alert_date_debut_symptoms",
+  fallback_date_col = "s2_date_debut_signes_symptomes",
+  min_model_weeks = 2L,
+  confidence_level = 0.95,
+  window_key_col = "threshold_time_key",
+  use_full_window = FALSE,
+  windows = NULL,
+  lookback_weeks = 3L,
+  n_copy_last = 1L,
+  nowcast = NULL,
+  nowcast_alive = NULL,
+  ref_date = NULL,
+  max_delay = 21L,
+  overdispersion_threshold = 1.5,
+  lag_to_notification = TRUE
+) {
   if (!window_key_col %in% names(true_cases)) {
     return(
       compute_alert_multipliers(
@@ -482,6 +734,7 @@ compute_alert_multipliers_by_window <- function(
         use_full_window = use_full_window,
         windows = windows,
         nowcast = nowcast,
+        nowcast_alive = nowcast_alive,
         ref_date = ref_date,
         max_delay = max_delay,
         overdispersion_threshold = overdispersion_threshold,
@@ -570,6 +823,7 @@ compute_alert_multipliers_by_window <- function(
           dplyr::select(
             zone_sante_notification,
             estimated_true_cases_recent,
+            dplyr::any_of("estimated_true_alive_cases_recent"),
             dplyr::any_of(c(
               "threshold_time_key",
               "recent_case_window_start",
@@ -586,6 +840,7 @@ compute_alert_multipliers_by_window <- function(
         use_full_window = use_full_window,
         windows = trailing_windows,
         nowcast = nowcast,
+        nowcast_alive = nowcast_alive,
         ref_date = ref_date,
         max_delay = max_delay,
         overdispersion_threshold = overdispersion_threshold,
@@ -617,6 +872,10 @@ compute_alert_multipliers_by_window <- function(
     nowcast_flags <- weekly_model_data |>
       dplyr::summarise(
         .nowcast_used = any(.data$case_count_source == "nowcast", na.rm = TRUE),
+        .alive_nowcast_used = any(
+          .data$alive_count_source == "nowcast",
+          na.rm = TRUE
+        ),
         .by = dplyr::all_of(c("zone_sante_notification", window_key_col))
       )
 
@@ -633,7 +892,10 @@ compute_alert_multipliers_by_window <- function(
         relationship = "one-to-one"
       ) |>
       dplyr::mutate(
-        .nowcast_used = tidyr::replace_na(.data$.nowcast_used, FALSE)
+        .nowcast_used = tidyr::replace_na(
+          .data$.nowcast_used | .data$.alive_nowcast_used,
+          FALSE
+        )
       ) |>
       dplyr::group_by(zone_sante_notification) |>
       dplyr::arrange(dplyr::across(dplyr::all_of(window_key_col))) |>
@@ -690,7 +952,7 @@ compute_alert_multipliers_by_window <- function(
           beta_d_n_model_weeks
         )
       ) |>
-      dplyr::select(-c(".nowcast_used", ".should_copy")) |>
+      dplyr::select(-c(".nowcast_used", ".alive_nowcast_used", ".should_copy")) |>
       dplyr::ungroup()
   }
 
@@ -807,12 +1069,25 @@ fit_poisson_offset_rate <- function(data,
       .data[[exposure_col]] >= min_weekly_exposure
     )
 
+  # Respect any per-week inclusion flag the caller set (e.g. a floor based on
+  # the zone's median exposure to avoid letting a nowcast-tail artifact
+  # dominate the offset rate). When the flag is absent the legacy path
+  # (everything >= min_weekly_exposure above) continues to apply.
+  if ("case_model_included" %in% names(data)) {
+    model_data <- model_data |>
+      dplyr::filter(.data$case_model_included)
+  }
+  if ("death_model_included" %in% names(data)) {
+    model_data <- model_data |>
+      dplyr::filter(.data$death_model_included)
+  }
+
   n_model_weeks <- nrow(model_data)
   total_count <- sum(model_data[[count_col]], na.rm = TRUE)
   total_exposure <- sum(model_data[[exposure_col]], na.rm = TRUE)
 
   if (n_model_weeks == 0L || !is.finite(total_exposure) ||
-      total_exposure <= 0) {
+    total_exposure <= 0) {
     return(rate_result(
       zone = zone,
       model = model,
@@ -1043,7 +1318,7 @@ poisson_rate_ci <- function(total_count,
                             total_exposure,
                             confidence_level) {
   if (!is.finite(total_count) || !is.finite(total_exposure) ||
-      total_exposure <= 0 || total_count < 0) {
+    total_exposure <= 0 || total_count < 0) {
     return(c(low = NA_real_, high = NA_real_))
   }
 
