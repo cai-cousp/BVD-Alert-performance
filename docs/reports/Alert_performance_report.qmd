@@ -664,39 +664,51 @@ if (file.exists(file.path(project_root, "R", "alert_plots.R"))) {
 # -------------------------------------------------------------------------
 # 2. Charger les données de sortie les plus récentes
 # -------------------------------------------------------------------------
-output_dirs <- list.dirs(output_base, recursive = FALSE, full.names = TRUE)
-valid_dirs <- output_dirs[
-     (lengths(lapply(output_dirs, function(d) list.files(d, pattern = "^01_thresholds_synthesis.*\\.rds$"))) > 0) &
-          (lengths(lapply(output_dirs, function(d) list.files(d, pattern = "^02_trends_smooth.*\\.rds$"))) > 0)
-]
+# Chaque famille d'artefacts est résolue depuis l'exécution la plus récente
+# qui l'a produite. Une exécution partielle du pipeline (par exemple
+# `scripts/run_nowcast_thresholds.R`, limitée aux étapes nowcast + seuils)
+# ne doit jamais être masquée par une exécution plus ancienne mais complète.
+run_dirs <- list.dirs(output_base, recursive = FALSE, full.names = TRUE)
+run_dirs <- run_dirs[grepl("^[0-9]{4}_[0-9]{2}_[0-9]{2}$", basename(run_dirs))]
 
-if (length(valid_dirs) == 0) {
-     valid_dirs <- output_dirs[
-          lengths(lapply(output_dirs, function(d) list.files(d, pattern = "^01_thresholds_synthesis.*\\.rds$"))) > 0
-     ]
+latest_run_dir_with <- function(pattern) {
+     hits <- run_dirs[lengths(lapply(run_dirs, function(d) list.files(d, pattern = pattern))) > 0]
+     if (length(hits) > 0) sort(hits, decreasing = TRUE)[[1]] else character(0)
 }
 
-latest_dir <- if (length(valid_dirs) > 0) sort(valid_dirs, decreasing = TRUE)[[1]] else output_base
+# Seuils + nowcast (étapes produites par scripts/run_nowcast_thresholds.R)
+thresholds_dir <- latest_run_dir_with("^01_thresholds_synthesis.*\\.rds$")
+# Séries d'adéquation (étape `trends`, consomme les seuils ci-dessus)
+trends_dir <- latest_run_dir_with("^02_trends_smooth_adeq.*\\.rds$")
+# Carte choroplèthe de performance de notification (étape `notification_map`)
+map_dir <- latest_run_dir_with("^03b_alert_notification_performance_map.*\\.png$")
+
+if (length(thresholds_dir) == 0) {
+     stop("Aucun fichier 01_thresholds_synthesis*.rds sous output/ : exécuter d'abord scripts/run_pipeline.R.")
+}
+if (length(trends_dir) == 0) {
+     stop("Aucun fichier 02_trends_smooth_adeq*.rds sous output/ : exécuter d'abord R/02_alert_trends.R.")
+}
+
+# Compatibilité avec le reste du document : répertoire de référence des seuils
+latest_dir <- thresholds_dir
+
+# Provenance des exécutions mobilisées (affichée dans l'en-tête du rapport)
+thresholds_run_label <- if (length(thresholds_dir) > 0) basename(thresholds_dir) else "indisponible"
+trends_run_label <- if (length(trends_dir) > 0) basename(trends_dir) else "indisponible"
+map_run_label <- if (length(map_dir) > 0) basename(map_dir) else "indisponible"
+vintage_mismatch <- length(thresholds_dir) > 0 &&
+     length(trends_dir) > 0 &&
+     !identical(thresholds_dir, trends_dir)
 
 # Carte de performance de notification (générée par R/03b_alert_notification_performance_map.R)
-# 1. Recherche du fichier PNG dans latest_dir, puis repli automatique sur les répertoires de sortie valides
+# Résolue depuis la plus récente exécution ayant produit un PNG
+notification_map_dir <- if (length(map_dir) > 0) map_dir else latest_dir
 notification_map_files <- list.files(
-     latest_dir,
+     notification_map_dir,
      pattern = "^03b_alert_notification_performance_map(_.*)?\\.png$",
      full.names = TRUE
 )
-notification_map_dir <- latest_dir
-
-if (length(notification_map_files) == 0 && exists("output_dirs") && length(output_dirs) > 0) {
-     for (d in sort(output_dirs, decreasing = TRUE)) {
-          cands <- list.files(d, pattern = "^03b_alert_notification_performance_map(_.*)?\\.png$", full.names = TRUE)
-          if (length(cands) > 0) {
-               notification_map_files <- cands
-               notification_map_dir <- d
-               break
-          }
-     }
-}
 
 # Préférer le fichier générique s'il existe, sinon le plus récent
 notification_map_path <- if (length(notification_map_files) > 0) {
@@ -785,27 +797,28 @@ notification_map_zones_df <- tryCatch(
 )
 
 
-# Chargement de la synthèse et des séries chronologiques
+# Chargement de la synthèse (seuils) et des séries chronologiques (tendances),
+# chacune depuis sa propre exécution de référence
 synthesis_files <- sort(
-     list.files(latest_dir, pattern = "^01_thresholds_synthesis.*\\.rds$", full.names = TRUE),
+     list.files(thresholds_dir, pattern = "^01_thresholds_synthesis.*\\.rds$", full.names = TRUE),
      decreasing = TRUE
 )
 synthesis <- readRDS(synthesis_files[[1]]) |>
      tibble::as_tibble()
 
 param_files <- sort(
-     list.files(latest_dir, pattern = "^01_intermediate_parameters.*\\.rds$", full.names = TRUE),
+     list.files(thresholds_dir, pattern = "^01_intermediate_parameters.*\\.rds$", full.names = TRUE),
      decreasing = TRUE
 )
 intermediate_params <- if (length(param_files) > 0) readRDS(param_files[[1]]) else list()
 
 trend_files <- sort(
-     list.files(latest_dir, pattern = "^02_trends_smooth_adeq.*\\.rds$", full.names = TRUE),
+     list.files(trends_dir, pattern = "^02_trends_smooth_adeq.*\\.rds$", full.names = TRUE),
      decreasing = TRUE
 )
 if (length(trend_files) == 0) {
      trend_files <- sort(
-          list.files(latest_dir, pattern = "^02_trends_smooth.*\\.rds$", full.names = TRUE),
+          list.files(trends_dir, pattern = "^02_trends_smooth.*\\.rds$", full.names = TRUE),
           decreasing = TRUE
      )
 }
@@ -1226,9 +1239,26 @@ under_alerting_hz <- c(top6_low_hz, top6_mid_hz)
     <strong>Date de publication :</strong> `r format(Sys.Date(), "%d %B %Y")` &nbsp;|&nbsp;
     <strong>Source des données :</strong> DHIS2-Tracker (`r format(dhis2_source_date, "%d-%m-%Y")`) &nbsp;|&nbsp; 
     <strong>Période couverte :</strong> du `r format(start_window_date, "%d/%m/%Y")` au `r format(end_window_date, "%d/%m/%Y")` (`r length(all_time_windows)` semaines d'analyse)<br>
+    <strong>Exécutions mobilisées :</strong> seuils &amp; nowcast `r thresholds_run_label` &nbsp;|&nbsp; tendances `r trends_run_label` &nbsp;|&nbsp; carte `r map_run_label`<br>
     <strong>Plateforme interactive (GitHub Pages) :</strong> <a href="https://cai-cousp.github.io/BVD-Alert-performance/" target="_blank" rel="noopener noreferrer" class="report-online-link">https://cai-cousp.github.io/BVD-Alert-performance/</a>
   </p>
 </div>
+```
+
+```{r vintage-callout, echo=FALSE, results="asis"}
+if (vintage_mismatch) {
+     cat(
+          '<div class="callout-custom" style="background-color: #fffbeb; border-left-color: #d97706;">',
+          "<strong>Nota de provenance :</strong> les figures d'adéquation et la carte proviennent de l'exécution du ",
+          trends_run_label,
+          ", antérieure à celle des seuils et du nowcasting (",
+          thresholds_run_label,
+          "). Les tableaux dérivés des seuils couvrent donc des fenêtres plus récentes que les figures. ",
+          "Exécuter <code>Rscript scripts/run_pipeline.R --stages=trends,notification_map</code> ",
+          "pour réaligner l'ensemble du rapport sur la dernière exécution des seuils.",
+          "</div>"
+     )
+}
 ```
 
 ---
