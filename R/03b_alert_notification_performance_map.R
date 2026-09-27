@@ -74,7 +74,7 @@ performance_map <- plot_health_zone_choropleth(
   palette = notification_adequacy_palette,
   category_labels = notification_adequacy_labels_fr,
   legend_title = "",
-  plot_title = "Performance de notification des alertes par zone de santé",
+  plot_title = "Performance de notification des alertes validées par zone de santé",
   plot_subtitle = "Moyenne de l'indice de performance des alertes (AAI), 3 dernières semaines",
   caption = caption_text,
   na_value = notification_na_fill,

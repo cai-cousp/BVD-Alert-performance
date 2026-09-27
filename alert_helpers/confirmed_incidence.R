@@ -46,7 +46,8 @@ build_confirmed_daily <- function(data,
     fallback_date_col = fallback_date_col,
     min_days = min_days,
     keep = alert_is_confirmed_case(data),
-    empty_message = "No confirmed/positive cases with a valid onset date."
+    empty_message = "No confirmed/positive cases with a valid onset date.",
+    extra_fallback_col = "date_debut_signes_symptomes_impt"
   )
 }
 
@@ -81,7 +82,44 @@ build_confirmed_death_daily <- function(data,
     fallback_date_col = fallback_date_col,
     min_days = min_days,
     keep = alert_is_dead(data),
-    empty_message = "No confirmed deaths with a valid onset date."
+    empty_message = "No confirmed deaths with a valid onset date.",
+    extra_fallback_col = "date_debut_signes_symptomes_impt"
+  )
+}
+
+#' Build a zero-filled daily count of confirmed alive cases by onset date
+#'
+#' Same contract as `build_confirmed_daily()`, but counts confirmed cases that
+#' are observed alive according to `alert_is_alive()`.
+#'
+#' @inheritParams build_confirmed_daily
+#'
+#' @return Tibble with columns `date` and `I` (integer).
+#' @export
+build_confirmed_alive_daily <- function(data,
+                                        zone = NULL,
+                                        min_date = NULL,
+                                        ref_date = Sys.Date(),
+                                        case_date_col = "alert_date_debut_symptoms",
+                                        fallback_date_col = "s2_date_debut_signes_symptomes",
+                                        min_days = 3L) {
+  if (!any(c(case_date_col, fallback_date_col) %in% names(data))) {
+    rlang::abort(
+      "build_confirmed_alive_daily() requires a case or fallback date column."
+    )
+  }
+
+  build_daily_incidence(
+    data = data,
+    zone = zone,
+    min_date = min_date,
+    ref_date = ref_date,
+    case_date_col = case_date_col,
+    fallback_date_col = fallback_date_col,
+    min_days = min_days,
+    keep = alert_is_alive(data),
+    empty_message = "No confirmed alive cases with a valid onset date.",
+    extra_fallback_col = "date_debut_signes_symptomes_impt"
   )
 }
 
@@ -95,7 +133,8 @@ build_daily_incidence <- function(data,
                                   fallback_date_col,
                                   min_days,
                                   keep,
-                                  empty_message) {
+                                  empty_message,
+                                  extra_fallback_col = NULL) {
   date_values <- list()
   if (case_date_col %in% names(data)) {
     date_values[[length(date_values) + 1L]] <- as.Date(data[[case_date_col]])
@@ -103,6 +142,10 @@ build_daily_incidence <- function(data,
   if (fallback_date_col %in% names(data)) {
     date_values[[length(date_values) + 1L]] <-
       as.Date(data[[fallback_date_col]])
+  }
+  if (!is.null(extra_fallback_col) && extra_fallback_col %in% names(data)) {
+    date_values[[length(date_values) + 1L]] <-
+      as.Date(data[[extra_fallback_col]])
   }
   onset_dates <- purrr::reduce(date_values, dplyr::coalesce)
 

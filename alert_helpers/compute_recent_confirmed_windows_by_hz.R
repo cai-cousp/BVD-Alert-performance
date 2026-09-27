@@ -62,10 +62,13 @@ compute_recent_confirmed_windows_by_hz <- function(
     rlang::abort("`threshold_step_days` must be a positive integer.")
   }
 
-  case_dates <- resolve_recent_case_date(
+  case_dates <- alert_resolve_onset_date(
     data,
-    case_date_col = case_date_col,
-    fallback_date_col = fallback_date_col
+    onset_col = case_date_col,
+    fallback_onset_cols = c(
+      fallback_date_col,
+      "date_debut_signes_symptomes_impt"
+    )
   )
   hz_index <- resolve_recent_case_hz_index(data, hz_index)
   threshold_dates <- resolve_threshold_dates(
@@ -372,4 +375,264 @@ add_empty_recent_case_count <- function(data) {
       n_recent_confirmed_nowcast_high = double(),
       recent_count_source = character()
     )
+}
+
+#' Classify each confirmed case by outcome status
+#'
+#' Returns a character vector of outcome status per row:
+#' - "alive": confirmed case with alive status indicators
+#' - "dead": confirmed case with death status indicators
+#' - "unknown": confirmed case where outcome cannot be determined
+#'
+#' @param data Dataframe. EVD line list with confirmed case classifications.
+#' @return Character vector of outcome status per row.
+alert_case_outcome_status <- function(data) {
+  alive <- alert_is_alive(data)
+  dead <- alert_is_dead(data)
+  dplyr::if_else(
+    alive, "alive",
+    dplyr::if_else(dead, "dead", "unknown")
+  )
+}
+
+#' Compute rolling recent confirmed alive/dead/unknown cases by health zone
+#'
+#' Variant of `compute_recent_confirmed_windows_by_hz()` that separately counts
+#' confirmed cases by outcome status (alive, dead, unknown) and returns
+#' status-specific nowcast-adjusted counts.
+#'
+#' @param data Dataframe. EVD line list.
+#' @param window_days Integer. Number of recent exposure days to count.
+#' @param threshold_dates Date vector. Threshold application dates.
+#' @param nowcast Optional nowcast table with `series = "confirmed_alive"`.
+#' @param max_delay Integer. Nowcast tail length in days.
+#' @return Tibble with one row per health-zone threshold window, including
+#'   `n_recent_confirmed_alive`, `n_recent_confirmed_dead`,
+#'   `n_recent_confirmed_unknown_outcome`, `prop_outcome_known`,
+#'   `n_recent_confirmed_alive_nowcast`, `recent_alive_count_source`.
+compute_recent_confirmed_alive_windows_by_hz <- function(
+    data,
+    window_days = 7L,
+    threshold_dates = NULL,
+    analysis_start_date = NULL,
+    analysis_end_date = NULL,
+    nowcast = NULL,
+    max_delay = 21L) {
+  alert_required_columns(
+    data,
+    c(
+      "zone_sante_notification",
+      "classification_finale",
+      "lab_resultat_final"
+    ),
+    "compute_recent_confirmed_alive_windows_by_hz()"
+  )
+
+  # Get the same windows as the base function (no nowcast for base count)
+  base_out <- compute_recent_confirmed_windows_by_hz(
+    data = data,
+    window_days = window_days,
+    threshold_dates = threshold_dates,
+    analysis_start_date = analysis_start_date,
+    analysis_end_date = analysis_end_date,
+    nowcast = NULL,
+    max_delay = max_delay
+  )
+
+  if (nrow(base_out) == 0L) {
+    return(
+      base_out |>
+        dplyr::mutate(
+          n_recent_confirmed_alive = integer(),
+          n_recent_confirmed_dead = integer(),
+          n_recent_confirmed_unknown_outcome = integer(),
+          prop_outcome_known = double(),
+          n_recent_confirmed_alive_nowcast = integer(),
+          n_recent_confirmed_alive_nowcast_low = double(),
+          n_recent_confirmed_alive_nowcast_high = double(),
+          recent_alive_count_source = character()
+        )
+    )
+  }
+
+  # Resolve case dates and classify outcomes
+  case_dates <- alert_resolve_onset_date(data)
+
+  # Filter to confirmed cases with valid dates and zone
+  confirmed <- data |>
+    dplyr::mutate(case_date = case_dates) |>
+    dplyr::filter(
+      alert_is_confirmed_case(data),
+      !is.na(zone_sante_notification),
+      !is.na(case_date)
+    )
+
+  # Classify outcomes
+  outcomes <- alert_case_outcome_status(confirmed)
+
+  # Count outcomes in each window
+  window_keys <- base_out |>
+    dplyr::select(
+      "threshold_time_key",
+      "recent_case_window_start",
+      "recent_case_window_end"
+    ) |>
+    dplyr::distinct()
+
+  outcome_counts <- confirmed |>
+    dplyr::mutate(outcome = outcomes) |>
+    dplyr::inner_join(
+      window_keys,
+      by = dplyr::join_by(
+        case_date >= recent_case_window_start,
+        case_date <= recent_case_window_end
+      ),
+      relationship = "many-to-many"
+    ) |>
+    dplyr::count(
+      threshold_time_key,
+      zone_sante_notification,
+      outcome,
+      name = "n_outcome"
+    )
+    # Complete the zone/window/outcome grid before pivoting so sparse and empty
+    # strata retain explicit zero columns.
+    all_outcomes <- c("alive", "dead", "unknown")
+    outcome_grid <- base_out |>
+      dplyr::distinct(.data$threshold_time_key, .data$zone_sante_notification) |>
+      tidyr::crossing(
+        outcome = all_outcomes
+      )
+    outcome_counts <- outcome_counts |>
+      dplyr::full_join(
+        outcome_grid,
+        by = c(
+          "threshold_time_key",
+          "zone_sante_notification",
+          "outcome"
+        ),
+        relationship = "one-to-one"
+      ) |>
+      dplyr::mutate(n_outcome = tidyr::replace_na(.data$n_outcome, 0L))
+
+    outcome_counts <- outcome_counts |>
+    tidyr::pivot_wider(
+      names_from = outcome,
+      values_from = n_outcome,
+      names_prefix = "n_recent_confirmed_"
+    ) |>
+    dplyr::rename(
+      n_recent_confirmed_unknown_outcome = n_recent_confirmed_unknown
+    )
+
+  base_out <- base_out |>
+    dplyr::left_join(
+      outcome_counts,
+      by = dplyr::join_by(threshold_time_key, zone_sante_notification)
+    ) |>
+    dplyr::mutate(
+      n_recent_confirmed_alive = tidyr::replace_na(n_recent_confirmed_alive, 0L),
+      n_recent_confirmed_dead = tidyr::replace_na(n_recent_confirmed_dead, 0L),
+      n_recent_confirmed_unknown_outcome = tidyr::replace_na(n_recent_confirmed_unknown_outcome, 0L),
+      prop_outcome_known = dplyr::if_else(
+        n_recent_confirmed_alive + n_recent_confirmed_dead +
+          n_recent_confirmed_unknown_outcome > 0,
+        (n_recent_confirmed_alive + n_recent_confirmed_dead) /
+          (n_recent_confirmed_alive + n_recent_confirmed_dead +
+             n_recent_confirmed_unknown_outcome),
+        NA_real_
+      )
+    )
+
+  # Nowcast adjustment for alive counts
+  if (!is.null(nowcast)) {
+    alert_required_columns(
+      nowcast,
+      c(
+        "zone_sante_notification",
+        "date",
+        "observed",
+        "nowcast_median",
+        "nowcast_lower_90",
+        "nowcast_upper_90"
+      ),
+      "compute_recent_confirmed_alive_windows_by_hz()"
+    )
+    if (!identical(attr(nowcast, "series"), "confirmed_alive")) {
+      rlang::abort(
+        "compute_recent_confirmed_alive_windows_by_hz() requires a confirmed-alive nowcast."
+      )
+    }
+
+    ref_date <- attr(nowcast, "ref_date")
+    if (is.null(ref_date)) ref_date <- max(nowcast$date, na.rm = TRUE)
+
+    nowcast_summary <- nowcast |>
+      dplyr::filter(
+        .data$date >= ref_date - max_delay + 1L,
+        .data$date <= ref_date
+      ) |>
+      dplyr::inner_join(
+        window_keys,
+        by = dplyr::join_by(
+          date >= recent_case_window_start,
+          date <= recent_case_window_end
+        ),
+        relationship = "many-to-many"
+      ) |>
+      dplyr::summarise(
+        nowcast_observed_sum = sum(.data$observed, na.rm = TRUE),
+        delta = sum(pmax(.data$nowcast_median - .data$observed, 0), na.rm = TRUE),
+        delta_low = sum(pmax(.data$nowcast_lower_90 - .data$observed, 0), na.rm = TRUE),
+        delta_high = sum(pmax(.data$nowcast_upper_90 - .data$observed, 0), na.rm = TRUE),
+        .by = c("zone_sante_notification", "threshold_time_key",
+                "recent_case_window_start", "recent_case_window_end")
+      )
+
+    base_out <- base_out |>
+      dplyr::left_join(
+        nowcast_summary,
+        by = dplyr::join_by(
+          zone_sante_notification,
+          threshold_time_key,
+          recent_case_window_start,
+          recent_case_window_end
+        ),
+        relationship = "one-to-one"
+      ) |>
+      dplyr::mutate(
+        n_recent_confirmed_alive_nowcast = dplyr::if_else(
+          !is.na(.data$delta),
+          as.integer(round(.data$n_recent_confirmed_alive + .data$delta)),
+          NA_integer_
+        ),
+        n_recent_confirmed_alive_nowcast_low = dplyr::if_else(
+          !is.na(.data$delta_low),
+          .data$n_recent_confirmed_alive + .data$delta_low,
+          NA_real_
+        ),
+        n_recent_confirmed_alive_nowcast_high = dplyr::if_else(
+          !is.na(.data$delta_high),
+          .data$n_recent_confirmed_alive + .data$delta_high,
+          NA_real_
+        ),
+        recent_alive_count_source = dplyr::if_else(
+          !is.na(.data$delta),
+          "nowcast",
+          "observed"
+        )
+      ) |>
+      dplyr::select(-c("delta", "delta_low", "delta_high", "nowcast_observed_sum"))
+  } else {
+    base_out <- base_out |>
+      dplyr::mutate(
+        n_recent_confirmed_alive_nowcast = NA_integer_,
+        n_recent_confirmed_alive_nowcast_low = NA_real_,
+        n_recent_confirmed_alive_nowcast_high = NA_real_,
+        recent_alive_count_source = "observed"
+      )
+  }
+
+  base_out |>
+    dplyr::arrange(threshold_valid_from, zone_sante_notification)
 }

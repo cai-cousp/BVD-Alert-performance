@@ -1500,7 +1500,7 @@ AAI moyen > 2,00 (Tri et validation requis)
 
 ```{r}
 #| label: fig-notification-performance-map
-#| fig-cap: "Performance de notification des alertes par zone de santé (moyenne AAI, 3 dernières semaines)"
+#| fig-cap: "Performance de notification des alertes validées par zone de santé (moyenne AAI, 3 dernières semaines)"
 #| fig-width: 9
 #| fig-height: 10
 #| out-width: "100%"

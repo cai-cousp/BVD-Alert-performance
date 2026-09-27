@@ -135,6 +135,8 @@ build_hz_full <- function(evd,
 #'
 #' @param evd Dataframe. Cleaned EVD line list.
 #' @param onset_col Character. Onset date column.
+#' @param fallback_onset_cols Character vector of fallback onset columns in
+#'   priority order.
 #' @param report_col Character. Lab confirmation date column.
 #' @param ref_date Date. Reference ("now") date; `NULL` uses the most recent
 #'   notification date in `evd` that is not later than the system date.
@@ -146,13 +148,16 @@ build_hz_full <- function(evd,
 #' @export
 build_reporting_delays <- function(evd,
                                    onset_col = "alert_date_debut_symptoms",
+                                   fallback_onset_cols = c(
+                                     "s2_date_debut_signes_symptomes",
+                                     "date_debut_signes_symptomes_impt"
+                                   ),
                                    report_col = "lab_date_analyse",
                                    ref_date = NULL,
                                    max_delay = 21L,
                                    min_onset = NULL,
                                    min_n = 20L) {
   required <- c(
-    onset_col,
     report_col,
     "classification_finale",
     "lab_resultat_final"
@@ -166,6 +171,9 @@ build_reporting_delays <- function(evd,
       )
     )
   }
+  if (!any(c(onset_col, fallback_onset_cols) %in% names(evd))) {
+    rlang::abort("build_reporting_delays() requires an onset date column.")
+  }
 
   ref_date <- if (is.null(ref_date)) {
     evd_notification_ref_date(evd)
@@ -174,16 +182,21 @@ build_reporting_delays <- function(evd,
   }
   max_delay <- as.integer(max_delay)
   min_onset <- if (is.null(min_onset)) NULL else as.Date(min_onset)
+  onset <- alert_resolve_onset_date(
+    evd,
+    onset_col = onset_col,
+    fallback_onset_cols = fallback_onset_cols
+  )
 
   delays <- evd |>
+    dplyr::mutate(
+      onset = .env$onset,
+      report = as.Date(.data[[report_col]]),
+      delay = as.integer(as.numeric(.data$report - .data$onset))
+    ) |>
     dplyr::filter(
       .data$classification_finale == "Cas confirmé" |
         .data$lab_resultat_final == "Positif"
-    ) |>
-    dplyr::transmute(
-      onset = as.Date(.data[[onset_col]]),
-      report = as.Date(.data[[report_col]]),
-      delay = as.integer(as.numeric(.data$report - .data$onset))
     ) |>
     dplyr::filter(
       !is.na(.data$onset),
@@ -201,6 +214,96 @@ build_reporting_delays <- function(evd,
     rlang::abort(
       sprintf(
         "Only %d fully observed onset -> lab delays; at least %d are required.",
+        nrow(delays),
+        min_n
+      )
+    )
+  }
+
+  delays
+}
+
+#' Build the observed onset -> lab delay sample for confirmed alive cases
+#'
+#' Alive alerts have their own reporting/truncation process. This builder keeps
+#' that series explicit rather than borrowing the all-case delay sample by
+#' default.
+#'
+#' @inheritParams build_reporting_delays
+#' @param fallback_onset_cols Character vector of fallback onset columns in
+#'   priority order.
+#' @return Tibble with columns `onset`, `report`, and `delay` (integer days).
+#' @export
+build_alive_reporting_delays <- function(evd,
+                                         onset_col = "alert_date_debut_symptoms",
+                                         fallback_onset_cols = c(
+                                           "s2_date_debut_signes_symptomes",
+                                           "date_debut_signes_symptomes_impt"
+                                         ),
+                                         report_col = "lab_date_analyse",
+                                         ref_date = NULL,
+                                         max_delay = 21L,
+                                         min_onset = NULL,
+                                         min_n = 10L) {
+  required <- c(
+    report_col,
+    "classification_finale",
+    "lab_resultat_final"
+  )
+  missing_cols <- setdiff(required, names(evd))
+  if (length(missing_cols) > 0L) {
+    rlang::abort(c(
+      "Missing required columns in `evd`.",
+      i = paste0("Missing: ", paste(missing_cols, collapse = ", "))
+    ))
+  }
+  if (!any(c(onset_col, fallback_onset_cols) %in% names(evd))) {
+    rlang::abort("build_alive_reporting_delays() requires an onset date column.")
+  }
+
+  is_alive <- alert_is_alive(evd)
+  onset <- alert_resolve_onset_date(
+    evd,
+    onset_col = onset_col,
+    fallback_onset_cols = fallback_onset_cols
+  )
+
+  ref_date <- if (is.null(ref_date)) {
+    evd_notification_ref_date(evd)
+  } else {
+    as.Date(ref_date)
+  }
+  max_delay <- as.integer(max_delay)
+  min_onset <- if (is.null(min_onset)) NULL else as.Date(min_onset)
+
+  delays <- evd |>
+    dplyr::mutate(
+      onset = onset,
+      report = as.Date(.data[[report_col]]),
+      delay = as.integer(as.numeric(.data$report - .data$onset))
+    ) |>
+    dplyr::filter(
+      is_alive,
+      !is.na(.data$onset),
+      !is.na(.data$delay),
+      .data$onset <= ref_date - max_delay,
+      .data$delay >= 0L,
+      .data$delay <= max_delay
+    ) |>
+    dplyr::transmute(
+      onset = .data$onset,
+      report = .data$report,
+      delay = .data$delay
+    )
+
+  if (!is.null(min_onset)) {
+    delays <- delays |> dplyr::filter(.data$onset >= min_onset)
+  }
+
+  if (nrow(delays) < min_n) {
+    rlang::abort(
+      sprintf(
+        "Only %d fully observed onset -> alive delays; at least %d are required.",
         nrow(delays),
         min_n
       )
@@ -264,6 +367,10 @@ build_death_reporting_delays <- function(evd,
   if (fallback_onset_col %in% names(evd)) {
     onset_values[[length(onset_values) + 1L]] <-
       as.Date(evd[[fallback_onset_col]])
+  }
+  if ("date_debut_signes_symptomes_impt" %in% names(evd)) {
+    onset_values[[length(onset_values) + 1L]] <-
+      as.Date(evd$date_debut_signes_symptomes_impt)
   }
   onset <- purrr::reduce(onset_values, dplyr::coalesce)
   report <- alert_resolve_death_report_date(

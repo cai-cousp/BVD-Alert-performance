@@ -398,6 +398,7 @@ p1 <- ggplot(trends_smooth |>
                   dplyr::summarise(total = sum(total_alerts), .by = week_start),
              aes(x = week_start, y = total)) +
   geom_col(fill = "steelblue") +
+  scale_x_date(date_breaks = "2 weeks", date_labels = "%d-%m\n%Y") +
   theme_minimal() +
   labs(title = "Overall Validated Alerts over Time", x = "Semaine de notification (date de début)", y = "Total Alerts")
 print(p1)
@@ -408,6 +409,7 @@ if (nrow(ens_data) > 0) {
     geom_col(aes(y = total_alerts), fill = "steelblue", alpha = 0.7) +
     geom_line(aes(y = case_alerts_3w + tidyr::replace_na(death_alerts_3w, 0)),
               colour = "firebrick", linetype = "dashed", linewidth = 0.8, na.rm = TRUE) +
+    scale_x_date(date_breaks = "2 weeks", date_labels = "%d-%m\n%Y") +
     theme_minimal() +
     labs(title = "Validated Alert Trends - Ensemble de la zone affectée",
          subtitle = "Total alerts (bars) and combined 3-week rolling mean (dashed red line)",
@@ -424,6 +426,7 @@ if (length(top_under) > 0) {
   p2 <- ggplot(trends_smooth |> dplyr::filter(zone_sante_notification %in% top_under), 
                aes(x = week_start, y = total_alerts)) +
     geom_col(fill = "coral") +
+    scale_x_date(date_breaks = "2 weeks", date_labels = "%d-%m\n%Y") +
     facet_wrap(~zone_sante_notification, scales = "free_y") +
     theme_minimal() +
     labs(title = "Trends in Under-alerting HZs", x = "Semaine de notification (date de début)", y = "Alerts")

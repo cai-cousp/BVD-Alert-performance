@@ -43,24 +43,43 @@ evd <- load_latest_evd(data_folder)
 # the same "latest file" mechanism because the Output folder is date-stamped.
 contacts <- load_latest_evd(data_folder, pattern = "contact.clean_Int_.*\\.rds")
 
-# Per-HZ EpiNow2 nowcasts (fitted once on the latest snapshot, cached so the
-# daily re-run only refits when the line list changes).
-message("Computing per-HZ EpiNow2 nowcasts...")
+# The canonical nowcast stage owns fitting. This longitudinal threshold stage
+# only reads and validates its versioned bundle, launching that stage when no
+# valid bundle exists for the current snapshot.
+message("Loading the status-specific nowcast bundle...")
 # ref_date defaults to the most recent notification date in the line list
 # that is not later than the system date (see evd_notification_ref_date()).
 latest_evd <- latest_evd_file(data_folder)
 evd_snapshot_key <- basename(latest_evd)
 evd_file_date <- extract_evd_date_stamp(evd_snapshot_key)
+evd_line_list_fingerprint <- rlang::hash(evd)
+nowcast_max_delay <- 21L
 
-nowcasts_all <- compute_nowcasts_by_zone(
-  evd,
-  series = "all",
-  cache_path = file.path(output_dir, sprintf("05_nowcast_by_zone_all_%s.rds", evd_file_date)),
-  snapshot_key = evd_snapshot_key
+nowcast_cache_path <- find_nowcast_bundle(
+  output_dir = here::here("output"),
+  expected_snapshot_key = evd_snapshot_key,
+  expected_nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
+  expected_max_delay = nowcast_max_delay,
+  expected_line_list_fingerprint = evd_line_list_fingerprint,
+  run_script = here::here("scripts", "run_nowcasts.R")
 )
-nowcasts_all_cases <- nowcasts_all$confirmed_cases
-nowcasts_deaths <- nowcasts_all$confirmed_deaths
-nowcasts_alive <- nowcasts_all$confirmed_alive
+if (is.null(nowcast_cache_path)) {
+  rlang::abort(c(
+    "No valid status-specific nowcast bundle found for the latest line list.",
+    i = "Run scripts/run_nowcasts.R before this longitudinal threshold script.",
+    i = paste0("Expected snapshot: ", evd_snapshot_key)
+  ))
+}
+nowcasts_all <- read_nowcast_bundle(
+  nowcast_cache_path,
+  expected_snapshot_key = evd_snapshot_key,
+  expected_nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
+  expected_max_delay = nowcast_max_delay,
+  expected_line_list_fingerprint = evd_line_list_fingerprint
+)
+nowcasts_all_cases <- get_nowcast_variant(nowcasts_all, "confirmed_cases")
+nowcasts_deaths <- get_nowcast_variant(nowcasts_all, "confirmed_deaths")
+nowcasts_alive <- get_nowcast_variant(nowcasts_all, "confirmed_alive")
 validate_status_nowcasts(
   nowcasts_all_cases = nowcasts_all_cases,
   nowcasts_alive = nowcasts_alive,
@@ -182,15 +201,11 @@ beni_thresholds <- pop |>
 message("Phase 3: Case-Derived Expectations (per time window)...")
 
 # Resolve a single onset date per row for cumulative filtering.
-# Fallback is the S2 symptom-onset date, NOT the notification timestamp —
-# consistent with the compute_recent_confirmed_*() helper defaults
-# (alert_date_debut_symptoms -> s2_date_debut_signes_symptomes).
+# Fallback priority is shared with the nowcast builders and includes the
+# imported symptom-onset date, never the notification timestamp.
 evd <- evd |>
   dplyr::mutate(
-    resolved_date = dplyr::coalesce(
-      as.Date(alert_date_debut_symptoms),
-      as.Date(s2_date_debut_signes_symptomes)
-    )
+    resolved_date = alert_resolve_onset_date(evd)
   )
 
 # Rolling 7-day recent cases — one row per HZ × time window. The distinct

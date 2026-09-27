@@ -87,10 +87,25 @@ Rscript -e 'testthat::test_dir("ShinyApp/tests/testthat")'
 
 ### Run the analysis
 
-Each script in `R/` is an entry point. They expect the external data layout
-described below. Run them in numerical order:
+Run the full pipeline (nowcast -> thresholds -> windowed thresholds -> trends
+-> mapping -> notification map) in one command:
 
 ```bash
+Rscript scripts/run_pipeline.R
+```
+
+Useful options: `--stages=nowcast,trends` (subset), `--skip=mapping`,
+`--include-optional` (also `R/02b_alert_trends_plots.R` and `R/04_nowcast.R`),
+`--no-echo`, `--continue-on-error`, `--dry-run`, `--list-stages`, `--help`.
+In an interactive session, `source("scripts/run_pipeline.R")` then call
+`run_pipeline()` directly.
+
+Each script in `R/` is an entry point. They expect the external data layout
+described below. Run the shared nowcast stage first, followed by the numerical
+analysis scripts:
+
+```bash
+Rscript scripts/run_nowcasts.R
 Rscript R/01_alert_thresholds.R
 Rscript R/01b_alert_thresholds_windows.R
 Rscript R/02_alert_trends.R
@@ -100,6 +115,13 @@ Rscript R/03b_alert_notification_performance_map.R
 
 Outputs are written under `output/<YYYY_MM_DD>/` (gitignored; regenerated on
 each run).
+
+`scripts/run_nowcasts.R` creates one versioned status-specific nowcast bundle
+for the current line-list snapshot. The all-case series feeds growth, Rt,
+detection, contacts, and secondary-transmission parameters; the confirmed-alive
+series feeds alive-alert thresholds; and the confirmed-death series feeds
+death-alert and CFR-related outputs. The threshold scripts load that bundle
+instead of refitting EpiNow2 themselves.
 
 `R/03b_alert_notification_performance_map.R` renders a publication-style
 choropleth of health-zone notification performance (sous-notification /

@@ -114,30 +114,51 @@ if (length(zones_without_notification_dates) > 0L) {
   ))
 }
 
-# Per-HZ EpiNow2 nowcasts (fitted once on the latest snapshot, cached so the
-# daily re-run only refits when the line list changes).
-message("Computing per-HZ EpiNow2 nowcasts...")
+# Per-HZ EpiNow2 nowcasts are produced once by scripts/run_nowcasts.R. This
+# threshold stage consumes that versioned bundle and selects the appropriate
+# variant for each downstream parameter. When no valid bundle exists for the
+# current snapshot, the canonical nowcast stage is launched automatically.
+message("Loading the status-specific nowcast bundle...")
 latest_evd <- latest_evd_file(data_folder)
 evd_snapshot_key <- basename(latest_evd)
 evd_file_date <- extract_evd_date_stamp(evd_snapshot_key)
+evd_line_list_fingerprint <- rlang::hash(evd)
+nowcast_max_delay <- 21L
 
-nowcasts <- compute_nowcasts_by_zone(
-  evd[evd$zone_sante_notification %in% conf.zs, ],
-  ref_date = evd_notification_ref_date(evd),
-  cache_path = file.path(output_dir, sprintf("05_nowcast_by_zone_%s.rds", evd_file_date)),
-  snapshot_key = evd_snapshot_key
+nowcast_cache_path <- find_nowcast_bundle(
+  output_dir = here::here("output"),
+  expected_snapshot_key = evd_snapshot_key,
+  expected_nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
+  expected_max_delay = nowcast_max_delay,
+  expected_line_list_fingerprint = evd_line_list_fingerprint,
+  run_script = here::here("scripts", "run_nowcasts.R")
 )
-nowcasts_deaths <- compute_nowcasts_by_zone(
-  evd[evd$zone_sante_notification %in% conf.zs, ],
-  ref_date = evd_notification_ref_date(evd),
-  series = "confirmed_deaths",
-  cache_path = file.path(output_dir, sprintf("05_nowcast_by_zone_deaths_%s.rds", evd_file_date)),
-  snapshot_key = evd_snapshot_key
+if (is.null(nowcast_cache_path)) {
+  rlang::abort(c(
+    "No valid status-specific nowcast bundle found for the latest line list.",
+    i = "Run scripts/run_nowcasts.R before this threshold script.",
+    i = paste0("Expected snapshot: ", evd_snapshot_key)
+  ))
+}
+nowcast_bundle <- read_nowcast_bundle(
+  nowcast_cache_path,
+  expected_snapshot_key = evd_snapshot_key,
+  expected_nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
+  expected_max_delay = nowcast_max_delay,
+  expected_line_list_fingerprint = evd_line_list_fingerprint
 )
 
-nowcasts <-
-  nowcasts |>
-  left_join(conf.province.zs, by = c("zone_sante_notification"))
+nowcasts <- get_nowcast_variant(nowcast_bundle, "confirmed_cases")
+nowcasts_alive <- get_nowcast_variant(nowcast_bundle, "confirmed_alive")
+nowcasts_deaths <- get_nowcast_variant(nowcast_bundle, "confirmed_deaths")
+validate_status_nowcasts(
+  nowcasts,
+  nowcasts_alive,
+  nowcasts_deaths,
+  warn_above = 0.10,
+  error_above = 0.25
+)
+message("Loaded nowcasts from: ", nowcast_cache_path)
 
 names(evd)[grepl("num",names(evd), ignore.case = TRUE)]
 
@@ -352,10 +373,7 @@ valid_notif_dates <- notif_dates[!is.na(notif_dates) & notif_dates <= Sys.Date()
 confirmed_cases <- evd_conf |>
   dplyr::filter(alert_is_confirmed_case(evd_conf))
 
-case_dates <- dplyr::coalesce(
-  as.Date(confirmed_cases$alert_date_debut_symptoms),
-  as.Date(confirmed_cases$s2_date_debut_signes_symptomes)
-)
+case_dates <- alert_resolve_onset_date(confirmed_cases)
 valid_case_dates <- case_dates[!is.na(case_dates) & case_dates <= Sys.Date()]
 
 all_timeline_dates <- c(valid_notif_dates, valid_case_dates)
@@ -369,6 +387,17 @@ hz_recent_cases <- compute_recent_confirmed_windows_by_hz(
   analysis_start_date = analysis_start_date,
   analysis_end_date = analysis_end_date,
   nowcast = nowcasts
+)
+
+# Alive exposure drives the alive-alert multiplier and alive threshold. The
+# all-case table above remains the denominator for growth, Rt, contacts, and
+# secondary-transmission parameters.
+hz_recent_alive_cases <- compute_recent_confirmed_alive_windows_by_hz(
+  evd_conf,
+  window_days = 7L,
+  analysis_start_date = analysis_start_date,
+  analysis_end_date = analysis_end_date,
+  nowcast = nowcasts_alive
 )
 
 window_grid <- hz_recent_cases |>
@@ -480,6 +509,10 @@ case_derived_thresholds.i <- combine_detection_estimates_by_hz(
   hz_detection,
   recent_cases = hz_recent_cases
 ) |>
+  add_alive_exposure_to_case_thresholds(
+    hz_recent_cases = hz_recent_cases,
+    hz_recent_alive_cases = hz_recent_alive_cases
+  ) |>
   dplyr::rename(cfr_backcalc_used = cfr_used)
 
 # Fit Poisson offset multipliers per window (trailing 3-week span) with lag adjustment
@@ -492,6 +525,7 @@ hz_multipliers <- compute_alert_multipliers_by_window(
   windows = window_grid,
   lookback_weeks = 3L,
   nowcast = nowcasts,
+  nowcast_alive = nowcasts_alive,
   lag_to_notification = TRUE
 )
 
@@ -540,13 +574,17 @@ window_multiplier_totals <- case_derived_thresholds.i |>
     sum_alive_alerts = sum(val_alive_alerts, na.rm = TRUE),
     sum_dead_alerts = sum(val_dead_alerts, na.rm = TRUE),
     sum_true_cases = sum(estimated_true_cases_recent, na.rm = TRUE),
+    sum_true_alive_cases = sum(
+      estimated_true_alive_cases_recent,
+      na.rm = TRUE
+    ),
     sum_expected_deaths = sum(expected_deaths_window, na.rm = TRUE),
     .by = threshold_time_key
   ) |>
   dplyr::mutate(
     pooled_beta_c_window = dplyr::if_else(
-      sum_true_cases > 0,
-      sum_alive_alerts / sum_true_cases,
+      sum_true_alive_cases > 0,
+      sum_alive_alerts / sum_true_alive_cases,
       NA_real_
     ),
     pooled_beta_d_window = dplyr::if_else(
@@ -601,13 +639,18 @@ case_derived_thresholds <- case_derived_thresholds.i |>
     ),
     cfr_used = tidyr::replace_na(cfr_used, mean(hz_cfr$pooled_cfr, na.rm = TRUE)),
     expected_secondary = estimated_true_cases_recent * contacts_per_case_used * sar,
-    alert_case_threshold_C = beta_c * estimated_true_cases_recent,
+    alert_alive_threshold_C = beta_c * estimated_true_alive_cases_recent,
     alert_death_threshold_C = beta_d * expected_deaths,
     # Model-derived uncertainty bands
-    alert_case_threshold_lower_C = beta_c_low * estimated_true_cases_recent,
-    alert_case_threshold_upper_C = beta_c_high * estimated_true_cases_recent,
+    alert_alive_threshold_lower_C = beta_c_low *
+      estimated_true_alive_cases_recent,
+    alert_alive_threshold_upper_C = beta_c_high *
+      estimated_true_alive_cases_recent,
     alert_death_threshold_lower_C = beta_d_low * expected_deaths,
-    alert_death_threshold_upper_C = beta_d_high * expected_deaths
+    alert_death_threshold_upper_C = beta_d_high * expected_deaths,
+    alert_case_threshold_C = alert_alive_threshold_C,
+    alert_case_threshold_lower_C = alert_alive_threshold_lower_C,
+    alert_case_threshold_upper_C = alert_alive_threshold_upper_C
   ) |>
     dplyr::select(
       zone_sante_notification,
@@ -616,6 +659,9 @@ case_derived_thresholds <- case_derived_thresholds.i |>
       threshold_valid_to,
       dplyr::ends_with("_C"),
       estimated_true_cases_recent,
+      estimated_true_alive_cases_recent,
+      alive_share,
+      alive_share_source,
       expected_deaths,
       beta_c,
       beta_c_low,
@@ -636,6 +682,9 @@ if (interactive()) {
 message("Phase 4: Threshold Synthesis...")
 
 threshold_c_cols <- c(
+  "alert_alive_threshold_C",
+  "alert_alive_threshold_lower_C",
+  "alert_alive_threshold_upper_C",
   "alert_case_threshold_C",
   "alert_case_threshold_lower_C",
   "alert_case_threshold_upper_C",
@@ -726,6 +775,9 @@ case_derived_ensemble <- case_derived_thresholds |>
     zone_sante_notification = "Ensemble de la zone affectée",
     threshold_valid_from = min(threshold_valid_from),
     threshold_valid_to = max(threshold_valid_to),
+    alert_alive_threshold_C = sum(alert_alive_threshold_C, na.rm = TRUE),
+    alert_alive_threshold_lower_C = sum(alert_alive_threshold_lower_C, na.rm = TRUE),
+    alert_alive_threshold_upper_C = sum(alert_alive_threshold_upper_C, na.rm = TRUE),
     alert_case_threshold_C = sum(alert_case_threshold_C, na.rm = TRUE),
     alert_case_threshold_lower_C = sum(alert_case_threshold_lower_C, na.rm = TRUE),
     alert_case_threshold_upper_C = sum(alert_case_threshold_upper_C, na.rm = TRUE),
@@ -733,20 +785,24 @@ case_derived_ensemble <- case_derived_thresholds |>
     alert_death_threshold_lower_C = sum(alert_death_threshold_lower_C, na.rm = TRUE),
     alert_death_threshold_upper_C = sum(alert_death_threshold_upper_C, na.rm = TRUE),
     estimated_true_cases_recent = sum(estimated_true_cases_recent, na.rm = TRUE),
+    estimated_true_alive_cases_recent = sum(
+      estimated_true_alive_cases_recent,
+      na.rm = TRUE
+    ),
     expected_deaths = sum(expected_deaths, na.rm = TRUE),
     beta_c = dplyr::if_else(
-      estimated_true_cases_recent > 0 & alert_case_threshold_C > 0,
-      alert_case_threshold_C / estimated_true_cases_recent,
+      estimated_true_alive_cases_recent > 0 & alert_alive_threshold_C > 0,
+      alert_alive_threshold_C / estimated_true_alive_cases_recent,
       mean(beta_c, na.rm = TRUE)
     ),
     beta_c_low = dplyr::if_else(
-      estimated_true_cases_recent > 0 & alert_case_threshold_lower_C > 0,
-      alert_case_threshold_lower_C / estimated_true_cases_recent,
+      estimated_true_alive_cases_recent > 0 & alert_alive_threshold_lower_C > 0,
+      alert_alive_threshold_lower_C / estimated_true_alive_cases_recent,
       mean(beta_c_low, na.rm = TRUE)
     ),
     beta_c_high = dplyr::if_else(
-      estimated_true_cases_recent > 0 & alert_case_threshold_upper_C > 0,
-      alert_case_threshold_upper_C / estimated_true_cases_recent,
+      estimated_true_alive_cases_recent > 0 & alert_alive_threshold_upper_C > 0,
+      alert_alive_threshold_upper_C / estimated_true_alive_cases_recent,
       mean(beta_c_high, na.rm = TRUE)
     ),
     beta_d = dplyr::if_else(
@@ -775,12 +831,14 @@ names(hz_detection_backcalc)
 # Save intermediate parameters as a list
 intermediate_params <- list(
   cfr = hz_cfr,
-  nowcasts = nowcasts,
+  nowcasts = nowcast_bundle,
+  nowcast_metadata = nowcast_bundle$metadata,
   cfr_backcalc = hz_cfr_backcalc,
   detection_rates = hz_detection,
   detection_backcalc = hz_detection_backcalc,
   growth_rates = hz_growth,
   recent_cases = hz_recent_cases,
+  recent_alive_cases = hz_recent_alive_cases,
   multipliers = hz_multipliers,
   alert_multiplier_weekly_data = attr(hz_multipliers, "weekly_model_data"),
   alert_multiplier_model_summary = attr(hz_multipliers, "model_summary"),

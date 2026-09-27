@@ -314,6 +314,15 @@ if (has_ensemble) {
     )
     message("  -> ", file.path(adeq_output_dir, "adequacy_stacked_ensemble.pdf"))
 
+    ggsave(
+      file.path(adeq_output_dir, "adequacy_stacked_ensemble.png"),
+      plot = p_adeq_ensemble,
+      width = per_hz_width,
+      height = per_hz_height,
+      dpi = 300
+    )
+    message("  -> ", file.path(adeq_output_dir, "adequacy_stacked_ensemble.png"))
+
     if (requireNamespace("plotly", quietly = TRUE)) {
       ip_adeq_ensemble <- plot_adequacy_stacked_interactive(
         data = trends_smooth_adeq,
@@ -429,7 +438,7 @@ if (show_adequacy_stacked) {
   p_adeq_overview <- plot_adequacy_stacked(
     data = trends_smooth_adeq,
     hz = target_zones,
-    date_breaks = 3
+    date_breaks = 2
   )
   save_alert_trend_plot(
     p_adeq_overview,

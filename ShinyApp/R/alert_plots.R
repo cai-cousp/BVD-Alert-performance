@@ -237,6 +237,31 @@ resolve_source_date <- function(data = NULL, source_date = NULL) {
 #' @keywords internal
 format_dmy <- function(x) format(as.Date(x), "%d-%m-%Y")
 
+#' Two-week x-axis breaks for weekly notification dates
+#'
+#' The trend and adequacy charts plot one point per notification week
+#' (week-end dates spaced 7 days apart). Labelling every week overcrowds the
+#' x-axis, so this helper keeps a two-week grid anchored on the first
+#' observed week. Breaks stay on observed dates so tick labels line up with
+#' the plotted weeks even when some weeks are missing from the data.
+#'
+#' @param dates Vector of Date values (notification week-end dates).
+#' @param weeks Single positive whole number. Break interval in weeks.
+#'   Default `2` (breaks every two weeks).
+#' @return A sorted Date vector of break positions (subset of `dates`).
+#' @keywords internal
+alert_date_breaks <- function(dates, weeks = 2L) {
+  if (!is.numeric(weeks) || length(weeks) != 1L || !is.finite(weeks) ||
+      weeks <= 0 || weeks %% 1L != 0) {
+    rlang::abort("`weeks` must be a single positive whole number.")
+  }
+  dates <- sort(unique(dates[!is.na(dates)]))
+  if (length(dates) == 0L) {
+    return(dates)
+  }
+  dates[(as.integer(dates - dates[[1L]]) %% (7L * weeks)) == 0L]
+}
+
 # Shared Plotly legend placement for interactive alert plots
 plotly_top_legend <- list(
   orientation = "h",
@@ -603,7 +628,7 @@ plot_alert_trends <- function(
 
   unique_dates <- sort(unique(plot_data$date))
   p <- p +
-    scale_x_date(breaks = unique_dates, date_labels = "%d-%m\n%Y") +
+    scale_x_date(breaks = alert_date_breaks(unique_dates), date_labels = "%d-%m\n%Y") +
     scale_y_continuous(expand = expansion(mult = c(0, 0))) +
     labs(
       title = sprintf("Tendances des %s vs. seuils attendus", metric_title_label),
@@ -1109,12 +1134,12 @@ build_plotly_alert_trends <- function(data, metric = c("case", "death"),
       )
     }
 
-    unique_dates <- sort(unique(df$date))
+    tick_dates <- alert_date_breaks(df$date)
     xaxis_cfg <- list(
       title = "Semaine de notification (date de fin)",
       tickmode = "array",
-      tickvals = unique_dates,
-      ticktext = format(unique_dates, "%d-%m\n%Y"),
+      tickvals = tick_dates,
+      ticktext = format(tick_dates, "%d-%m\n%Y"),
       tickangle = 0,
       tickfont = list(size = 10)
     )
@@ -1378,7 +1403,8 @@ prepare_adequacy_data <- function(data = NULL, data_path = NULL, hz = NULL,
 #' @param date_breaks Numeric or character. X-axis date breaks. A numeric
 #'   value is interpreted as the interval in weeks (for example, `3` becomes
 #'   `"3 weeks"`); a character value is passed to [ggplot2::scale_x_date()]
-#'   unchanged. Default `NULL` uses one break per observed week.
+#'   unchanged. Default `NULL` uses a break every two weeks on observed
+#'   notification week-ends.
 #' @param source_date Date/character. "As-of" date for the caption.
 #' @param for_plotly Logical. Internal: when `TRUE`, build a `text` aesthetic
 #'   for plotly hover tooltips. Default `FALSE`.
@@ -1539,7 +1565,7 @@ plot_adequacy_stacked <- function(
 
   unique_dates <- sort(unique(plot_data_long$date))
   x_date_scale <- if (is.null(date_breaks)) {
-    scale_x_date(breaks = unique_dates, date_labels = "%d-%m\n%Y")
+    scale_x_date(breaks = alert_date_breaks(unique_dates), date_labels = "%d-%m\n%Y")
   } else {
     scale_x_date(date_breaks = date_breaks, date_labels = "%d-%m\n%Y")
   }
@@ -1830,12 +1856,12 @@ plot_adequacy_stacked_interactive <- function(...,
       NULL
     }
 
-    unique_dates <- sort(unique(df$date))
+    tick_dates <- alert_date_breaks(df$date)
     xaxis_cfg <- list(
       title = "Semaine de notification (date de fin)",
       tickmode = "array",
-      tickvals = unique_dates,
-      ticktext = format(unique_dates, "%d-%m\n%Y"),
+      tickvals = tick_dates,
+      ticktext = format(tick_dates, "%d-%m\n%Y"),
       tickangle = 0,
       tickfont = list(size = 10)
     )

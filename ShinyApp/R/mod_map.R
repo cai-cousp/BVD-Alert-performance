@@ -14,7 +14,7 @@ notification_map_ui <- function(id) {
         div(class = "card-icon-box icon-green", tags$i(class = "bi bi-map")),
         div(
           class = "card-title-text-group",
-          tags$span(class = "card-title-main", "Performance de notification des alertes par zone de santé"),
+          tags$span(class = "card-title-main", "Performance de notification des alertes validées par zone de santé"),
           tags$span(class = "card-title-sub", "Cartographie synthétique de l'indice moyen d'adéquation (AAI) au niveau opérationnel")
         )
       ),

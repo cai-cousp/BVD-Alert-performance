@@ -38,7 +38,7 @@ test_that("UI contains the frozen top header with title, dataset date, and subti
   expect_true(grepl("app-frozen-header", ui_str))
 
   # Title with dataset date and description text are present
-  expect_true(grepl("Analyse des tendances et performance des alertes de la MVE/B", ui_str))
+  expect_true(grepl("Analyse des tendances et performance des alertes valid[ée]es de la MVE/B", ui_str))
   expect_true(grepl("15-09-2026", ui_str))
   expect_true(grepl("Suivi longitudinal des alertes de cas et de d[ée]c[èe]s par rapport aux seuils attendus", ui_str))
   expect_true(grepl("avec [ée]valuation de la performance", ui_str))

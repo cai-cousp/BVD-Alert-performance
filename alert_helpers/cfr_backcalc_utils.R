@@ -302,6 +302,82 @@ alert_is_dead <- function(data) {
   alert_is_confirmed_case(data) & (status_dead | date_dead)
 }
 
+#' Check whether an alert row represents a confirmed case with alive status
+#'
+#' A confirmed case is alive when it has explicit alive indicators
+#' (`Vivant`) in at least one status column and no death evidence. Rows that
+#' are not confirmed cases, including unknown-outcome confirmed cases, return
+#' `FALSE`; outcome-status helpers classify the latter as unknown separately.
+#'
+#' @param data Dataframe. EVD line list.
+#' @return Logical vector of length `nrow(data)`.
+alert_is_alive <- function(data) {
+  alert_required_columns(
+    data,
+    c(
+      "classification_finale",
+      "lab_resultat_final",
+      "s6_statut_final_patient",
+      "s5_statut_patient_lors_prelev",
+      "nature_alerte"
+    ),
+    "alert_is_alive()"
+  )
+
+  if (!any(alert_is_confirmed_case(data))) return(rep(FALSE, nrow(data)))
+  confirmed <- alert_is_confirmed_case(data)
+
+  s6_status <- dplyr::coalesce(
+    as.character(data$s6_statut_final_patient),
+    ""
+  )
+  s5_status <- dplyr::coalesce(
+    as.character(data$s5_statut_patient_lors_prelev),
+    ""
+  )
+  alert_status <- dplyr::coalesce(
+    as.character(data$nature_alerte),
+    ""
+  )
+
+  has_alive <- s6_status == "Vivant" |
+    s5_status == "Vivant" |
+    alert_status == "Vivant"
+  has_any_status <- s6_status != "" |
+    s5_status != "" |
+    alert_status != ""
+
+  # Only classify as alive when there is explicit alive evidence AND
+  # no conflicting status information
+  confirmed & has_alive & has_any_status & !alert_is_dead(data)
+}
+#'
+#' Onset dates are coalesced across the preferred column and fallback columns.
+#'
+#' @param data Dataframe. Line list.
+#' @param onset_col Character. Preferred onset date column.
+#' @param fallback_onset_cols Character. Fallback onset date columns in priority
+#'   order.
+#' @return A Date vector of length `nrow(data)`.
+alert_resolve_onset_date <- function(data,
+                                     onset_col = "alert_date_debut_symptoms",
+                                     fallback_onset_cols = c(
+                                       "s2_date_debut_signes_symptomes",
+                                       "date_debut_signes_symptomes_impt"
+                                     )) {
+  cols_to_check <- c(onset_col, fallback_onset_cols)
+  date_values <- list()
+  for (col in cols_to_check) {
+    if (col %in% names(data)) {
+      date_values[[length(date_values) + 1L]] <- as.Date(data[[col]])
+    }
+  }
+  if (length(date_values) == 0L) {
+    return(as.Date(rep(NA, nrow(data))))
+  }
+  purrr::reduce(date_values, dplyr::coalesce)
+}
+
 alert_resolve_death_date <- function(
     data,
     death_date_cols = c(

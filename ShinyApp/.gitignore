@@ -1,3 +1,7 @@
+# macOS / OS artifacts
+.DS_Store
+._*
+
 /.quarto/
 **/*.quarto_ipynb
 

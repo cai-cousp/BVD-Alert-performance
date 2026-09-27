@@ -61,7 +61,7 @@ extract_evd_date_stamp <- function(file_name) {
   }
   match_nowcast <- stringr::str_match(
     fname,
-    "05_nowcast_by_zone(?:_deaths|_both)?_([0-9]{4}_[0-9]{2}_[0-9]{2}(?:_[0-9]+)?)\\.rds"
+    "05_nowcast_by_zone(?:_deaths|_alive|_both|_all)?_([0-9]{4}_[0-9]{2}_[0-9]{2}(?:_[0-9]+)?)\\.rds"
   )
   if (!is.na(match_nowcast[1, 2])) {
     return(match_nowcast[1, 2])
@@ -98,14 +98,18 @@ extract_evd_date_stamp <- function(file_name) {
 
 #' Build the standard nowcast cache filename
 #' @noRd
-build_nowcast_cache_filename <- function(series = c("confirmed_cases", "confirmed_deaths", "both"),
+#' @seealso `STATUS_NOWCAST_CACHE_VERSION` in `nowcast_bundle.R`
+
+build_nowcast_cache_filename <- function(series = c("confirmed_cases", "confirmed_deaths", "confirmed_alive", "both", "all"),
                                         evd_date_stamp = NULL) {
   series <- match.arg(series)
   prefix <- switch(
     series,
     confirmed_cases  = "05_nowcast_by_zone_",
     confirmed_deaths = "05_nowcast_by_zone_deaths_",
-    both             = "05_nowcast_by_zone_both_"
+    confirmed_alive  = "05_nowcast_by_zone_alive_",
+    both             = "05_nowcast_by_zone_both_",
+    all              = "05_nowcast_by_zone_all_"
   )
   if (is.null(evd_date_stamp) || nchar(evd_date_stamp) == 0L) {
     paste0(sub("_$", "", prefix), ".rds")
@@ -123,7 +127,7 @@ resolve_nowcast_save_path <- function(cache_path, series, evd_date_stamp) {
   }
   fname <- basename(cache_path)
   dir <- dirname(cache_path)
-  if (grepl("^05_nowcast_by_zone(?:_deaths|_both)?\\.rds$", fname) &&
+  if (grepl("^05_nowcast_by_zone(?:_deaths|_alive|_both|_all)?\\.rds$", fname) &&
       !is.null(evd_date_stamp) && nchar(evd_date_stamp) > 0L) {
     return(file.path(dir, build_nowcast_cache_filename(series, evd_date_stamp)))
   }
@@ -214,6 +218,8 @@ find_cached_nowcast <- function(cache_path,
     if (!is.null(cached$max_delay) && !identical(cached$max_delay, max_delay)) next
     if (!is.null(cached$dist_samples) && !identical(cached$dist_samples, dist_samples)) next
     if (!is.null(cached$generation_time) && !identical(cached$generation_time, generation_time)) next
+    if (is.null(cached$nowcast_version) ||
+        !identical(cached$nowcast_version, STATUS_NOWCAST_CACHE_VERSION)) next
     if (series == "confirmed_deaths") {
       if (!is.null(cached$death_date_cols) && !identical(cached$death_date_cols, death_date_cols)) next
       if (!is.null(cached$death_report_fallback_col) &&
@@ -460,7 +466,7 @@ compute_nowcasts_by_zone <- function(evd,
                                      onset_col = "alert_date_debut_symptoms",
                                      report_col = "lab_date_analyse",
                                      province_col = "province_notification",
-                                     series = c("confirmed_cases", "confirmed_deaths", "both"),
+                                     series = c("confirmed_cases", "confirmed_deaths", "confirmed_alive", "both", "all"),
                                      death_date_cols = c("s6_date_deces", "date_de_deces"),
                                      death_report_fallback_col = "date_heure_notification_alerte",
                                      max_delay = 21L,
@@ -510,6 +516,18 @@ compute_nowcasts_by_zone <- function(evd,
     )
   }
 
+  if (series == "confirmed_alive" || series == "all") {
+    alert_required_columns(
+      evd,
+      c(
+        "s6_statut_final_patient",
+        "s5_statut_patient_lors_prelev",
+        "nature_alerte"
+      ),
+      "compute_nowcasts_by_zone()"
+    )
+  }
+
   ref_date <- if (is.null(ref_date)) {
     evd_notification_ref_date(evd)
   } else {
@@ -530,10 +548,11 @@ compute_nowcasts_by_zone <- function(evd,
   zone_province_lookup <- build_zone_province_lookup(evd, province_col = province_col)
 
   if (series == "both") {
+    cache_search_series <- if (series == "both") "both" else "all"
     cached_hit <- find_cached_nowcast(
       cache_path = cache_path,
       snapshot_key = snapshot_key,
-      series = "both",
+      series = cache_search_series,
       max_delay = max_delay,
       dist_samples = dist_samples,
       generation_time = generation_time,
@@ -631,6 +650,160 @@ compute_nowcasts_by_zone <- function(evd,
         list(
           nowcasts = out,
           series = "both",
+          nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
+          ref_date = ref_date,
+          delay_summary = attr(cases, "delay_summary"),
+          delay_cdf = attr(cases, "delay_cdf"),
+          max_delay = max_delay,
+          dist_samples = dist_samples,
+          generation_time = generation_time,
+          death_date_cols = death_date_cols,
+          death_report_fallback_col = death_report_fallback_col,
+          snapshot_key = snapshot_key,
+          generated_at = Sys.time()
+        ),
+        save_path
+      )
+    }
+
+    return(out)
+  }
+
+  if (series == "all") {
+    cached_hit <- find_cached_nowcast(
+      cache_path = cache_path,
+      snapshot_key = snapshot_key,
+      series = "all",
+      max_delay = max_delay,
+      dist_samples = dist_samples,
+      generation_time = generation_time,
+      death_date_cols = death_date_cols,
+      death_report_fallback_col = death_report_fallback_col,
+      evd_date_stamp = evd_date_stamp
+    )
+    if (!is.null(cached_hit)) {
+      cached <- cached_hit$cached
+      nowcasts_out <- cached$nowcasts
+      if (is.list(nowcasts_out)) {
+        if (!is.null(nowcasts_out$confirmed_cases) && !"province_notification" %in% names(nowcasts_out$confirmed_cases)) {
+          nowcasts_out$confirmed_cases <- augment_nowcast_province(
+            nowcasts_out$confirmed_cases,
+            zone_province_lookup,
+            province_col = province_col
+          )
+        }
+        if (!is.null(nowcasts_out$confirmed_deaths) && !"province_notification" %in% names(nowcasts_out$confirmed_deaths)) {
+          nowcasts_out$confirmed_deaths <- augment_nowcast_province(
+            nowcasts_out$confirmed_deaths,
+            zone_province_lookup,
+            province_col = province_col
+          )
+        }
+        if (!is.null(nowcasts_out$confirmed_alive) && !"province_notification" %in% names(nowcasts_out$confirmed_alive)) {
+          nowcasts_out$confirmed_alive <- augment_nowcast_province(
+            nowcasts_out$confirmed_alive,
+            zone_province_lookup,
+            province_col = province_col
+          )
+        }
+      }
+      return(structure(
+        nowcasts_out,
+        ref_date = cached$ref_date,
+        delay_summary = cached$delay_summary,
+        delay_cdf = cached$delay_cdf,
+        max_delay = cached$max_delay,
+        generation_time = cached$generation_time,
+        dist_samples = cached$dist_samples,
+        snapshot_key = cached$snapshot_key,
+        series = "all",
+        generated_at = cached$generated_at
+      ))
+    }
+
+    cases <- compute_nowcast_stratum(
+      evd,
+      ref_date = ref_date,
+      onset_col = onset_col,
+      report_col = report_col,
+      province_col = province_col,
+      series = "confirmed_cases",
+      death_date_cols = death_date_cols,
+      death_report_fallback_col = death_report_fallback_col,
+      max_delay = max_delay,
+      min_date = min_date,
+      recent_window_days = recent_window_days,
+      min_recent_cases = min_recent_cases,
+      min_series_days = min_series_days,
+      delay_min_onset = delay_min_onset,
+      generation_time = generation_time,
+      dist_samples = dist_samples,
+      stan = stan,
+      seed = seed,
+      fit_fun = fit_fun,
+      cache_path = NULL,
+      snapshot_key = NULL,
+      verbose = verbose
+    )
+    deaths <- compute_nowcast_stratum(
+      evd,
+      ref_date = ref_date,
+      onset_col = onset_col,
+      report_col = report_col,
+      province_col = province_col,
+      series = "confirmed_deaths",
+      death_date_cols = death_date_cols,
+      death_report_fallback_col = death_report_fallback_col,
+      max_delay = max_delay,
+      min_date = min_date,
+      recent_window_days = recent_window_days,
+      min_recent_cases = min_recent_cases,
+      min_series_days = min_series_days,
+      delay_min_onset = delay_min_onset,
+      generation_time = generation_time,
+      dist_samples = dist_samples,
+      stan = stan,
+      seed = seed,
+      fit_fun = fit_fun,
+      cache_path = NULL,
+      snapshot_key = NULL,
+      verbose = verbose
+    )
+    alive <- compute_nowcast_stratum(
+      evd,
+      ref_date = ref_date,
+      onset_col = onset_col,
+      report_col = report_col,
+      province_col = province_col,
+      series = "confirmed_alive",
+      death_date_cols = death_date_cols,
+      death_report_fallback_col = death_report_fallback_col,
+      max_delay = max_delay,
+      min_date = min_date,
+      recent_window_days = recent_window_days,
+      min_recent_cases = min_recent_cases,
+      min_series_days = min_series_days,
+      delay_min_onset = delay_min_onset,
+      generation_time = generation_time,
+      dist_samples = dist_samples,
+      stan = stan,
+      seed = seed,
+      fit_fun = fit_fun,
+      cache_path = NULL,
+      snapshot_key = NULL,
+      verbose = verbose
+    )
+
+    out <- list(confirmed_cases = cases, confirmed_deaths = deaths, confirmed_alive = alive)
+    attr(out, "series") <- "all"
+
+    save_path <- resolve_nowcast_save_path(cache_path, "all", evd_date_stamp)
+    if (!is.null(save_path) && !is.null(snapshot_key)) {
+      saveRDS(
+        list(
+          nowcasts = out,
+          series = "all",
+          nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
           ref_date = ref_date,
           delay_summary = attr(cases, "delay_summary"),
           delay_cdf = attr(cases, "delay_cdf"),
@@ -682,7 +855,7 @@ compute_nowcast_stratum <- function(evd,
                                     onset_col = "alert_date_debut_symptoms",
                                     report_col = "lab_date_analyse",
                                     province_col = "province_notification",
-                                    series = c("confirmed_cases", "confirmed_deaths", "both"),
+                                    series = c("confirmed_cases", "confirmed_deaths", "confirmed_alive", "both"),
                                     death_date_cols = c("s6_date_deces", "date_de_deces"),
                                     death_report_fallback_col = "date_heure_notification_alerte",
                                     max_delay = 21L,
@@ -789,10 +962,28 @@ compute_nowcast_stratum <- function(evd,
       min_onset = delay_min_onset,
       min_n = 10L
     )
+  } else if (series == "confirmed_alive") {
+    build_alive_reporting_delays(
+      evd,
+      onset_col = onset_col,
+      fallback_onset_cols = c(
+        fallback_date_col,
+        "date_debut_signes_symptomes_impt"
+      ),
+      report_col = report_col,
+      ref_date = ref_date,
+      max_delay = max_delay,
+      min_onset = delay_min_onset,
+      min_n = 10L
+    )
   } else {
     build_reporting_delays(
       evd,
       onset_col = onset_col,
+      fallback_onset_cols = c(
+        fallback_date_col,
+        "date_debut_signes_symptomes_impt"
+      ),
       report_col = report_col,
       ref_date = ref_date,
       max_delay = max_delay,
@@ -872,6 +1063,15 @@ compute_nowcast_stratum <- function(evd,
       counts <- tryCatch(
         if (series == "confirmed_deaths") {
           build_confirmed_death_daily(
+            evd,
+            zone = zone,
+            min_date = min_date,
+            ref_date = ref_date,
+            case_date_col = onset_col,
+            fallback_date_col = fallback_date_col
+          )
+        } else if (series == "confirmed_alive") {
+          build_confirmed_alive_daily(
             evd,
             zone = zone,
             min_date = min_date,
@@ -1021,6 +1221,7 @@ compute_nowcast_stratum <- function(evd,
       list(
         nowcasts = nowcasts,
         series = series,
+        nowcast_version = STATUS_NOWCAST_CACHE_VERSION,
         ref_date = ref_date,
         delay_summary = delay_summary,
         delay_cdf = delay_cdf,
@@ -1189,4 +1390,138 @@ aggregate_nowcasts_by_province <- function(nowcasts,
   }
 
   res
+}
+
+#' Reconcile alive nowcast as difference between case and death nowcasts
+#'
+#' Computes confirmed-alive nowcast as confirmed_cases minus confirmed_deaths,
+#' ensuring all values are non-negative.
+#'
+#' @param cases Nowcast tibble for confirmed cases.
+#' @param deaths Nowcast tibble for confirmed deaths.
+#' @return Nowcast tibble with series attribute "confirmed_alive".
+#' @export
+reconcile_alive_nowcast <- function(cases, deaths) {
+  if (is.null(cases) || is.null(deaths)) {
+    rlang::abort(
+      "reconcile_alive_nowcast() requires both cases and deaths nowcasts."
+    )
+  }
+  tibble::tibble(
+    zone_sante_notification = dplyr::coalesce(
+      cases$zone_sante_notification,
+      deaths$zone_sante_notification
+    ),
+    date = dplyr::coalesce(cases$date, deaths$date),
+    observed = pmax(
+      cases$observed - deaths$observed,
+      0L
+    ),
+    nowcast_median = pmax(
+      cases$nowcast_median - deaths$nowcast_median,
+      0
+    ),
+    nowcast_lower_90 = pmax(
+      cases$nowcast_lower_90 - deaths$nowcast_lower_90,
+      0
+    ),
+    nowcast_upper_90 = pmax(
+      cases$nowcast_upper_90 - deaths$nowcast_upper_90,
+      0
+    ),
+    method = "reconciled_difference",
+    status = dplyr::coalesce(cases$status, deaths$status)
+  ) |>
+    dplyr::arrange(zone_sante_notification, date) |>
+    dplyr::distinct(.data$zone_sante_notification, .data$date, .keep_all = TRUE) |>
+    structure(
+      series = "confirmed_alive",
+      ref_date = attr(cases, "ref_date") %||% attr(deaths, "ref_date")
+    )
+}
+
+#' Merge two nowcast strata, retaining old historical and replacing/appending new
+#'
+#' Merges two nowcast tibbles by zone and date: dates present only in `d_old`
+#' are kept, dates present in `d_new` replace overlapping dates from `d_old`,
+#' and any new dates from `d_new` are appended.
+#'
+#' @param d_old First nowcast tibble.
+#' @param d_new Second nowcast tibble.
+#' @return Merged nowcast tibble.
+#' @export
+merge_nowcast_stratum <- function(d_old, d_new) {
+  if (is.null(d_old) && is.null(d_new)) return(NULL)
+  if (is.null(d_old) || nrow(d_old) == 0L) return(d_new)
+  if (is.null(d_new) || nrow(d_new) == 0L) return(d_old)
+
+  by_cols <- c("zone_sante_notification", "date")
+
+  # Update overlapping keys from d_new, ignore keys only in d_new
+  updated <- dplyr::rows_update(
+    d_old, d_new,
+    by = by_cols,
+    unmatched = "ignore"
+  )
+  # Append keys that only exist in d_new
+  new_only <- d_new |>
+    dplyr::anti_join(d_old, by = by_cols)
+  result <- dplyr::bind_rows(updated, new_only) |>
+    dplyr::arrange(zone_sante_notification, date)
+
+  for (a in c("ref_date", "max_delay")) {
+    if (!is.null(attr(d_new, a))) {
+      attr(result, a) <- attr(d_new, a)
+    }
+  }
+  result
+}
+
+#' Append and replace nowcasts across a list of strata
+#'
+#' Merges `new_list` into `old_list` using `merge_nowcast_stratum` for each
+#' stratum. New strata in `new_list` that are not in `old_list` are added.
+#'
+#' @param new_list Named list of nowcast tibbles.
+#' @param old_list Named list of nowcast tibbles.
+#' @return Merged named list.
+#' @export
+append_and_replace_nowcasts <- function(new_list, old_list) {
+  if (is.null(new_list) || length(new_list) == 0L) return(old_list)
+  if (is.null(old_list) || length(old_list) == 0L) return(new_list)
+
+  all_names <- unique(c(names(old_list), names(new_list)))
+  result <- list()
+  for (nm in all_names) {
+    result[[nm]] <- merge_nowcast_stratum(old_list[[nm]], new_list[[nm]])
+  }
+  if (!is.null(attr(new_list, "series"))) {
+    attr(result, "series") <- attr(new_list, "series")
+  }
+  result
+}
+
+#' Find the latest nowcast cache file in a directory
+#'
+#' Scans a directory for nowcast cache files matching the pattern
+#' `05_nowcast_by_zone_{series}_{datestamp}.rds` and returns the most recent.
+#'
+#' @param dir Character. Directory to scan.
+#' @param exclude_date Character. Date stamp to exclude (e.g., "2026_08_25_1200").
+#' @param series Character. Series name to match (default "all").
+#' @return Loaded nowcast RDS, or NULL if not found.
+#' @export
+find_latest_nowcast <- function(dir, exclude_date = NULL, series = "all") {
+  pattern <- paste0("05_nowcast_by_zone_", series, "_")
+  files <- list.files(dir, pattern = pattern, recursive = TRUE, full.names = TRUE)
+  if (length(files) == 0L) return(NULL)
+
+  if (!is.null(exclude_date)) {
+    files <- files[!grepl(exclude_date, files)]
+  }
+  if (length(files) == 0L) return(NULL)
+
+  dates <- gsub(".*_(\\d{4}_\\d{2}_\\d{2}_\\d{4})\\.rds$", "\\1", basename(files))
+  latest_file <- files[which.max(as.numeric(gsub("_", "", dates)))]
+  readRDS(latest_file)$nowcasts
 }
